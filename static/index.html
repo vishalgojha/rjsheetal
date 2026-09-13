@@ -67,6 +67,88 @@ h1,h2,h3{color:#f4eadc}
   @media (min-width:700px) {
     .assistant-command,.assistant-actions { max-width:1280px !important; }
   }
+</style>
+<style>
+  /* Calm, personal workspace theme. The supplied illustration remains the
+     atmosphere around the workspace; translucent surfaces keep text legible. */
+  :root {
+    --paper:#f9b2d7;
+    --card:rgba(255,255,255,.78);
+    --ink:#33283a;
+    --muted:#725d73;
+    --line:rgba(82,55,86,.18);
+    --orange:#b95380;
+    --green:#568b77;
+    --shadow:0 18px 42px rgba(102,67,100,.16);
+  }
+  html,body { background:#f9b2d7 !important; color:var(--ink); }
+  body {
+    background-image:linear-gradient(135deg,rgba(249,178,215,.57),rgba(207,236,243,.62)),url('/assistant-bg.png') !important;
+    background-size:cover;
+    background-position:center top;
+    background-attachment:fixed;
+  }
+  body:before { opacity:.045; mix-blend-mode:multiply; }
+  .app { background:rgba(255,255,255,.23) !important; }
+  h1,h2,h3,.track strong,.quick strong,.email-connection-copy strong,.life-box>strong,.life-box-head strong { color:var(--ink) !important; }
+  .hello small,.sub,.track span,.track small,.live-card .song,.empty,.progress-meta,.tip,.rj-state small,.email-context,.email-capabilities,.email-status,.life-muted,.life-row small,.life-note span,.music-connection small { color:var(--muted) !important; }
+  .avatar { color:#fff; background:linear-gradient(145deg,#c86291,#a94775); box-shadow:0 7px 16px rgba(185,83,128,.24); }
+  .icon-btn { border-color:var(--line) !important; color:#684f68 !important; background:rgba(255,255,255,.66) !important; }
+  .live-card { border:1px solid rgba(103,61,91,.2) !important; color:var(--ink) !important; background:linear-gradient(145deg,rgba(255,255,255,.8),rgba(249,178,215,.72)) !important; box-shadow:var(--shadow) !important; }
+  .live-card:after { border-color:rgba(185,83,128,.28); box-shadow:0 0 0 20px rgba(185,83,128,.07),0 0 0 42px rgba(185,83,128,.04); }
+  .onair { color:#65435e !important; background:rgba(255,255,255,.58) !important; }
+  .onair i { background:var(--green); box-shadow:0 0 0 4px rgba(86,139,119,.15); }
+  .freq { color:#8d6686 !important; }
+  .record { background:repeating-radial-gradient(circle,#68445f 0 2px,#b77498 3px 4px); box-shadow:0 12px 20px rgba(95,54,88,.24); }
+  .record:before { background:linear-gradient(145deg,#f6ffdc,#cfecf3); }
+  .now-card,.quick,.search,.result,.queue-item,.life-panel,.email-panel,.assistant-command,.assistant-actions,.device-handoff { border-color:var(--line) !important; background:rgba(255,255,255,.76) !important; box-shadow:var(--shadow) !important; }
+  .cover { background:linear-gradient(145deg,#c86291,#8a6392); }
+  .mini-play,.round-play,.top-rj,.assistant-form button,.assistant-action-row button,.email-actions button,.email-unlock button,.email-pin-change button { color:#fff !important; background:var(--orange) !important; box-shadow:0 7px 16px rgba(185,83,128,.2); }
+  .quick { color:var(--ink) !important; }
+  .quick span { color:var(--orange); background:rgba(249,178,215,.38); }
+  .search svg { stroke:#876d85; }
+  .search input,.assistant-form input,.email-unlock input,.email-pin-change input,.email-search input,.life-form input,.life-note-form input,.life-note-form textarea { color:var(--ink) !important; background:rgba(255,255,255,.68) !important; border-color:var(--line) !important; }
+  .search input::placeholder,.assistant-form input::placeholder,.life-form input::placeholder,.life-note-form input::placeholder,.life-note-form textarea::placeholder { color:#9b7e99; }
+  .search button { color:#fff !important; background:var(--orange) !important; }
+  .progress-line { background:rgba(111,76,107,.2); }
+  .progress-line i { background:var(--orange); }
+  .tip { background:rgba(246,255,220,.58); color:#6b5870 !important; }
+  .assistant-command strong { color:var(--ink); }
+  .assistant-command p,.assistant-actions p { color:var(--muted) !important; }
+  .assistant-status,.assistant-reply { color:#6b5870 !important; }
+  .assistant-reply { border-color:var(--orange); }
+  .assistant-prompts { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+  .assistant-prompts button { border:1px solid rgba(185,83,128,.26); border-radius:999px; padding:7px 10px; color:#704c6b; background:rgba(249,178,215,.25); font-size:10px; font-weight:700; }
+  .assistant-prompts button:hover,.assistant-prompts button:focus-visible { color:#fff; background:var(--orange); }
+  .rj-card { border-color:var(--line) !important; background:rgba(255,255,255,.76) !important; }
+  .rj-state,.transcript { background:rgba(255,255,255,.62) !important; }
+  .voice-toggle,.wake-toggle { border-color:var(--line) !important; color:#704c6b !important; background:rgba(255,255,255,.55) !important; }
+  .voice-toggle.on { color:#fff !important; background:var(--orange) !important; }
+  .email-badge { color:#704c6b !important; background:rgba(249,178,215,.36) !important; }
+  .email-badge.connected { color:#356b58 !important; background:rgba(218,249,222,.75) !important; }
+  .email-badge.locked,.email-badge.error { color:#8d3e65 !important; background:rgba(249,178,215,.58) !important; }
+  .email-connection,.email-item,.life-box { background:rgba(255,255,255,.5) !important; border-color:var(--line) !important; }
+  .email-app-icon { color:#fff !important; background:var(--orange) !important; }
+  .email-actions button.secondary,.email-search button,.queue-actions button { color:#704c6b !important; background:rgba(255,255,255,.44) !important; border-color:var(--line) !important; }
+  .queue-actions button:first-child { color:#fff !important; background:var(--orange) !important; border-color:var(--orange) !important; }
+  .bottom-nav { background:rgba(255,255,255,.82) !important; border-color:var(--line) !important; }
+  .nav-item { color:#967b94; }
+  .nav-item.active,.eyebrow,.section-head button { color:var(--orange) !important; }
+  @media (min-width:700px) {
+    body { background-color:#f9b2d7 !important; }
+    .app { width:calc(100% - 48px); max-width:1600px; padding:42px clamp(28px,5vw,88px) 58px; border-radius:36px; }
+    .view.active,.playlist-panel { max-width:1400px; }
+    .assistant-command,.assistant-actions { max-width:1400px !important; }
+  }
+  @media (min-width:980px) {
+    .view[data-view="home"] { grid-template-columns:minmax(0,1.28fr) minmax(420px,.72fr); column-gap:40px; }
+    .view[data-view="home"] > #emailPanel { grid-column:2; }
+    .view[data-view="home"] > .live-card { min-height:390px; }
+  }
+  @media (max-width:699px) {
+    body { background-image:linear-gradient(135deg,rgba(249,178,215,.62),rgba(207,236,243,.68)),url('/assistant-bg.png') !important; }
+    .app { background:rgba(255,255,255,.16) !important; }
+  }
 </style></head>
 <body><main class="app"><header class="topbar"><div class="hello"><div class="avatar">S</div><div><small>Good evening</small><strong>Hi, Sheetal</strong></div></div><div class="top-actions"><button class="top-rj" id="topRj" type="button">ASK ASSISTANT</button><button class="icon-btn" id="installBtn" aria-label="Install Sheetal Assistant" hidden>＋</button><button class="icon-btn" id="muteBtn" aria-label="Mute or unmute"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4m12 0 4 4m0-4-4 4"/></svg></button></div></header>
 <section class="view active" data-view="home"><div class="eyebrow">PERSONAL SPACE</div><h1>Made for your moments.</h1><p class="sub">Tell your assistant what you need. Music is just one thing it can take care of.</p><article class="live-card"><div class="live-row"><span class="onair"><i></i><span id="airText">READY</span></span><span class="freq">SHEETAL · ASSISTANT</span></div><div class="record-wrap"><div class="record paused" id="recordHome"></div></div><h2 id="homeTitle">Ready when you are</h2><p class="song" id="homeArtist">Ask for music, planning, reminders, or help</p></article><div class="section-head"><h2>Now playing</h2></div><div class="now-card"><div class="cover" id="homeCover">♪</div><div class="track"><small>SPOTIFY</small><strong id="nowTitle">Connect Spotify to let the assistant play</strong><span id="nowArtist">Music will be controlled here</span></div><button class="mini-play" id="homePlay" aria-label="Play or pause"><svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button></div><div class="music-connection"><button class="voice-toggle" id="spotifyConnect" type="button">CONNECT SPOTIFY</button><small id="spotifyStatus">Connect Sheetal’s Spotify account once on this phone. The assistant will control music for her.</small></div><div class="device-handoff" id="deviceHandoff" hidden><div><strong>Playing on</strong><span id="deviceStatus">This device</span></div><button id="refreshDevices" type="button">REFRESH</button><select id="devicePicker" aria-label="Choose where music plays"><option value="">Choose a Spotify device…</option></select><small>Only one Spotify device can play at a time. On iPhone, tap Play after transferring.</small></div><div class="section-head"><h2>Quick actions</h2></div><div class="quick-grid"><button class="quick" data-assistant-focus="voice"><span>◉</span><strong>Talk to assistant</strong><small>Start a voice conversation</small></button><button class="quick" data-assistant-focus="text"><span>⌕</span><strong>Tell it what you need</strong><small>Type a request or music instruction</small></button></div></section>
@@ -140,8 +222,17 @@ h1,h2,h3{color:#f4eadc}
     assistant.setAttribute('aria-label', 'Ask Sheetal Assistant');
     assistant.innerHTML = '<div class="eyebrow">PERSONAL ASSISTANT</div><strong>What do you need?</strong><p>Type an instruction for help, planning, reflection, or music.</p><form class="assistant-form" id="assistantChat"><input id="assistantInput" autocomplete="off" placeholder="Try: plan my day, play something calm…" aria-label="Instruction for assistant"><button id="assistantSend" type="submit">SEND</button></form><p class="assistant-status" id="assistantStatus" aria-live="polite">Chat works without the microphone. Voice is available from ASK ASSISTANT.</p><div class="assistant-reply" id="assistantReply" aria-live="polite"></div>';
     homeView.before(assistant);
+    assistant.querySelector('strong + p')?.replaceChildren(document.createTextNode('Ask about your day, email, planning, lists, apps, web research, or music.'));
+    assistant.querySelector('#assistantInput')?.setAttribute('placeholder', 'Try: plan my day, find an email, open WhatsApp…');
+    assistant.querySelector('.assistant-form')?.insertAdjacentHTML('beforebegin', '<div class="assistant-prompts" aria-label="Assistant suggestions"><button type="button" data-assistant-prompt="Plan my day around my priorities">Plan my day</button><button type="button" data-assistant-prompt="Find the important unread emails">Check important email</button><button type="button" data-assistant-prompt="Open WhatsApp and help me send a message">Open WhatsApp</button><button type="button" data-assistant-prompt="Add milk to my shopping list">Add to list</button></div>');
     assistant.insertAdjacentHTML('beforebegin', '<section class="assistant-actions" id="assistantActions" aria-live="polite" hidden><strong id="assistantActionTitle">Ready to continue</strong><p id="assistantActionDetail">The assistant prepared an action on this phone. Review it before continuing.</p><div class="assistant-action-row"><button id="assistantActionButton" type="button">OPEN</button><button id="assistantActionDismiss" class="secondary" type="button">DISMISS</button></div></section>');
   }
+  document.querySelectorAll('[data-assistant-prompt]').forEach(button => button.addEventListener('click', () => {
+    const input = document.getElementById('assistantInput');
+    if (!input) return;
+    input.value = button.dataset.assistantPrompt || '';
+    input.focus({preventScroll:false});
+  }));
   document.querySelector('.view.active > .sub')?.replaceChildren(document.createTextNode('Tell your assistant what you need. Music is just one thing it can take care of.'));
   // The refresh control was removed from the compact panel; keep the legacy
   // listener harmless so it cannot prevent Gmail controls from initializing.
@@ -187,6 +278,8 @@ h1,h2,h3{color:#f4eadc}
     }
     function renderStatus(data) {
       current = data;
+      const connect = $e('emailConnect');
+      const inbox = $e('emailInbox');
       if (data.error) {
         setConnectionState('ERROR', 'Unavailable', 'locked');
         $e('emailStatus').textContent = data.error;
@@ -194,8 +287,6 @@ h1,h2,h3{color:#f4eadc}
         $e('emailSearch').hidden = true; $e('emailChangePin').hidden = false;
         showUnlock(false); showPinChange(false); return;
       }
-      const connect = $e('emailConnect');
-      const inbox = $e('emailInbox');
       if (data.setup_required) {
         setConnectionState('SETUP NEEDED', 'Needs setup');
         $e('emailStatus').textContent = 'The assistant needs its Composio key before Gmail can be connected.';

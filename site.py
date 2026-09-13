@@ -31,6 +31,7 @@ STATIC = os.path.join(HERE, "static")
 DATA_DIR = os.environ.get("RJSHEETAL_DATA") or HERE
 QUEUE_FILE = os.path.join(DATA_DIR, "requests.json")
 AUDIO_FILE = os.path.join(DATA_DIR, "audio.json")
+MEMORY_FILE = os.path.join(DATA_DIR, "radio-memory.json")
 DEFAULT_SEEDED_FILE = os.path.join(DATA_DIR, "default-track-seeded")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
@@ -150,6 +151,52 @@ def load_queue():
 
 def save_queue(q):
     write_json(QUEUE_FILE, q)
+
+
+def load_memory():
+    return read_json(MEMORY_FILE, {
+        "plays": {}, "skips": {}, "replays": {}, "requests": [],
+        "conversations": [], "moods": [], "updated": 0,
+    })
+
+
+def memory_context():
+    memory = load_memory()
+    def top(bucket):
+        return [name for name, _ in sorted(bucket.items(), key=lambda pair: pair[1], reverse=True)[:6]]
+    return {
+        "favorite_tracks": top(memory.get("plays", {})),
+        "skipped_tracks": top(memory.get("skips", {})),
+        "replayed_tracks": top(memory.get("replays", {})),
+        "recent_requests": memory.get("requests", [])[-8:],
+        "recent_conversations": memory.get("conversations", [])[-8:],
+        "recent_moods": memory.get("moods", [])[-8:],
+        "updated": memory.get("updated", 0),
+    }
+
+
+def record_memory(event):
+    """Store compact behavioural signals; never store audio or access tokens."""
+    memory = load_memory()
+    kind = str(event.get("type", ""))[:24]
+    track = str(event.get("track", ""))[:240]
+    if kind in ("play", "skip", "replay") and track:
+        bucket = memory.setdefault(kind + "s", {})
+        bucket[track] = int(bucket.get(track, 0)) + 1
+    if kind == "request" and track:
+        memory.setdefault("requests", []).append({"track": track, "ts": int(time.time())})
+        memory["requests"] = memory["requests"][-50:]
+    if kind == "mood" and event.get("text"):
+        memory.setdefault("moods", []).append({"text": str(event["text"])[:240], "ts": int(time.time())})
+        memory["moods"] = memory["moods"][-50:]
+    if kind == "conversation" and event.get("text"):
+        memory.setdefault("conversations", []).append({
+            "source": str(event.get("source", "user"))[:20],
+            "text": str(event["text"])[:400], "ts": int(time.time()),
+        })
+        memory["conversations"] = memory["conversations"][-80:]
+    memory["updated"] = int(time.time())
+    write_json(MEMORY_FILE, memory)
 
 
 def ok_request(ip):
@@ -490,6 +537,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/spotify/config":
             self._json(200, {"client_id": CREDS.get("cid", ""), "playlist_id": SPOTIFY_PLAYLIST_ID, "default_track": DEFAULT_TRACK_URI})
+        elif path == "/api/memory/context":
+            self._json(200, memory_context())
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
             try:
@@ -564,6 +613,17 @@ class Handler(BaseHTTPRequestHandler):
             st["ts"] = time.time()
             write_json(AUDIO_FILE, st)
             self._json(200, {"ok": True})
+        elif path == "/api/memory/event":
+            event = body if isinstance(body, dict) else {}
+            if event.get("type") not in ("play", "skip", "replay", "request", "conversation", "mood"):
+                self._json(400, {"error": "unsupported memory event"})
+                return
+            try:
+                record_memory(event)
+                self._json(200, {"ok": True})
+            except Exception as e:
+                log(f"memory error: {e!r}")
+                self._json(500, {"error": "memory unavailable"})
         elif path == "/api/agent/request-song":
             ok, msg = ok_request(self._client_ip())
             if not ok:

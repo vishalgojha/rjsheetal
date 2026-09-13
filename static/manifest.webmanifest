@@ -1,7 +1,7 @@
 {
-  "name": "RJ Sheetal Live Radio",
-  "short_name": "RJ Sheetal",
-  "description": "Mobile-first radio by RJ Sheetal — listen live and request any song on Spotify.",
+  "name": "Sheetal FM Live Radio",
+  "short_name": "Sheetal FM",
+  "description": "Sheetal FM — listen live, talk to the AI RJ, and request songs on Spotify.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#101213",

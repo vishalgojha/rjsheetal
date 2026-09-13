@@ -15,12 +15,13 @@ services:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       RJSHEETAL_TOKEN: ${RJSHEETAL_TOKEN:-}
-      RJSHEETAL_STATION: ${RJSHEETAL_STATION:-RJ Sheetal}
-      RJSHEETAL_TAGLINE: ${RJSHEETAL_TAGLINE:-your favourite radio jockey}
+      RJSHEETAL_STATION: ${RJSHEETAL_STATION:-Sheetal FM}
+      RJSHEETAL_TAGLINE: ${RJSHEETAL_TAGLINE:-Sheetal's live radio station}
       RJSHEETAL_MAX_QUEUE: ${RJSHEETAL_MAX_QUEUE:-8}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-p9aflnsbBe1o0aDeQa97}
-      ELEVENLABS_MODEL_ID: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
+      ELEVENLABS_MODEL_ID: ${ELEVENLABS_MODEL_ID:-eleven_v3_conversational}
+      ELEVENLABS_AGENT_ID: ${ELEVENLABS_AGENT_ID:-agent_8401m2cyznemf10tav3hh90nqya1}
     volumes:
       - rjsheetal-data:/data
     healthcheck:

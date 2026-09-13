@@ -33,8 +33,8 @@ AUDIO_FILE = os.path.join(DATA_DIR, "audio.json")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
-STATION = os.environ.get("RJSHEETAL_STATION", "RJ Sheetal")
-TAGLINE = os.environ.get("RJSHEETAL_TAGLINE", "your favourite radio jockey")
+STATION = os.environ.get("RJSHEETAL_STATION", "Sheetal FM")
+TAGLINE = os.environ.get("RJSHEETAL_TAGLINE", "Sheetal's live radio station")
 MAX_BUF = 512 * 1024
 READ_CHUNK = 32 * 1024
 
@@ -45,7 +45,8 @@ RATE_LIMIT = int(os.environ.get("RJSHEETAL_RATE_LIMIT", "3"))
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "p9aflnsbBe1o0aDeQa97")
-ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
+ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_v3_conversational")
+ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 
 
@@ -248,7 +249,7 @@ def rj_tool_call(message):
             low = text.lower()
             break
     status = read_json(AUDIO_FILE, {})
-    current = status.get("title") or "the live RJ Sheetal show"
+    current = status.get("title") or "the live Sheetal FM show"
 
     if any(word in low for word in ("queue", "queued", "coming up", "next songs")):
         items = [r for r in load_queue() if r.get("status") != "done"]
@@ -316,6 +317,34 @@ def elevenlabs_speak(text):
     })
     with urllib.request.urlopen(req, timeout=25) as r:
         return r.read()
+
+
+def agent_request_song(query):
+    """Search Spotify and enqueue the best match for an ElevenLabs tool call."""
+    query = str(query or "").strip()[:200]
+    if len(query) < 2:
+        return {"ok": False, "error": "song title is required"}
+    tracks = search_tracks(query, limit=1)
+    if not tracks:
+        return {"ok": False, "error": f"no Spotify match for {query}"}
+    track = find_track(tracks[0]["uri"])
+    if not track:
+        return {"ok": False, "error": "Spotify track lookup failed"}
+    with QUEUE_LOCK:
+        q = load_queue()
+        if any(r.get("uri") == track["uri"] and r.get("status") != "done" for r in q):
+            return {"ok": True, "already_queued": True, "song": track["name"], "artist": track["artist"]}
+        if len(q) - sum(1 for r in q if r.get("status") == "done") >= MAX_QUEUE:
+            return {"ok": False, "error": "queue is full"}
+        item = {
+            "id": base64.b64encode(os.urandom(6)).decode().replace("+", "").replace("/", ""),
+            "uri": track["uri"], "name": track["name"], "artist": track["artist"],
+            "album": track["album"], "art": track["art"], "dur_ms": track["dur_ms"],
+            "ts": int(time.time()), "status": "queued",
+        }
+        q.append(item)
+        save_queue(q)
+    return {"ok": True, "queued": True, "song": track["name"], "artist": track["artist"]}
 
 
 # ---------------------------------------------------------------- http
@@ -392,6 +421,15 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"results": search_tracks(q[:200])})
         elif path == "/api/queue":
             self._json(200, {"queue": load_queue()})
+        elif path == "/api/agent/now-playing":
+            st = read_json(AUDIO_FILE, {})
+            self._json(200, {"station": STATION, "now_playing": st.get("title", ""), "on_air": self.buf.on_air()})
+        elif path == "/api/agent/queue":
+            items = [r for r in load_queue() if r.get("status") != "done"]
+            self._json(200, {"station": STATION, "queue": [
+                {"song": r.get("name", ""), "artist": r.get("artist", ""), "status": r.get("status", "queued")}
+                for r in items[:8]
+            ]})
         elif path == "/api/rj":
             self._send(405, json.dumps({"error": "use POST"}), extra={"Allow": "POST"})
         elif path == "/api/pending":
@@ -440,6 +478,13 @@ class Handler(BaseHTTPRequestHandler):
             st["ts"] = time.time()
             write_json(AUDIO_FILE, st)
             self._json(200, {"ok": True})
+        elif path == "/api/agent/request-song":
+            ok, msg = ok_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            query = body.get("song") or body.get("query") or body.get("title") or ""
+            self._json(200, agent_request_song(query))
         elif path == "/api/request":
             ok, msg = ok_request(self._client_ip())
             if not ok:

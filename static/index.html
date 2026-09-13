@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0e1a">
-<title>RJ Sheetal · Live Radio</title>
+<title>Sheetal FM · Live Radio</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async></script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -383,7 +384,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v3a1 1 0 0 0 1 1h2V11H4a7 7 0 0 1 14 0h-2v5h2a1 1 0 0 0 1-1v-3a9 9 0 0 0-9-9zM6 14v3m12-3v3"/></svg>
       </div>
       <div>
-        <b>RJ Sheetal</b>
+        <b>Sheetal FM</b>
         <small>LIVE RADIO</small>
       </div>
     </div>
@@ -395,8 +396,8 @@
       <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z"/></svg>
       <div class="ring"></div>
     </div>
-    <h1>RJ Sheetal</h1>
-    <div class="tag" id="tagline">your favourite radio jockey</div>
+    <h1>Sheetal FM</h1>
+    <div class="tag" id="tagline">Sheetal's live radio station</div>
 
     <div class="now">
       <div class="lbl" id="nowLbl">now playing</div>
@@ -422,16 +423,20 @@
     <div class="rj-copy">
       <div class="eyebrow">VOICE CONTROL</div>
       <h2 id="rj-heading">Talk to Sheetal</h2>
-      <p id="rjStatus">Say “Sheetal, play…” to request a song, or ask what’s playing.</p>
+      <p id="rjStatus">Talk to your AI RJ — ask what’s playing or say “Sheetal, play…”</p>
     </div>
     <div class="rj-controls">
-      <button class="rj-mic" id="rjMic" type="button" aria-label="Talk to RJ Sheetal">
+      <button class="rj-mic" id="rjMic" type="button" aria-label="Talk to Sheetal FM AI RJ">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z"/></svg>
       </button>
       <button class="rj-stop" id="rjStop" type="button">stop</button>
     </div>
     <div class="rj-transcript" id="rjTranscript">Tap the mic and speak to your RJ</div>
     <div class="rj-reply" id="rjReply" hidden></div>
+    <div class="agent-wrap">
+      <div class="eyebrow">SHEETAL FM AI RJ</div>
+      <elevenlabs-convai agent-id="agent_8401m2cyznemf10tav3hh90nqya1"></elevenlabs-convai>
+    </div>
   </section>
 
   <div class="sec">
@@ -447,17 +452,17 @@
   <div class="results" id="results"></div>
 
   <div class="sec">
-    <h2>coming up on <span>RJ Sheetal</span></h2>
+    <h2>coming up on <span>Sheetal FM</span></h2>
     <div class="cnt" id="qcap2"></div>
   </div>
   <div id="queue"></div>
 
   <div class="note">
     Every request goes straight to the airwaves.
-    <br>Made with <code>Spotify</code> · <code>rj.vishalojha.me</code>
+    <br>Made with <code>Spotify</code> · <code>Sheetal FM</code>
   </div>
 
-  <div class="footer">© RJ Sheetal · all requests are love</div>
+  <div class="footer">© Sheetal FM · all requests are love</div>
 </div>
 
 <div id="toast"></div>
@@ -484,8 +489,8 @@ audio.src = '/api/stream';
 
 if ('mediaSession' in navigator) {
   navigator.mediaSession.metadata = new MediaMetadata({
-    title: 'RJ Sheetal · Live Radio',
-    artist: 'RJ Sheetal',
+    title: 'Sheetal FM · Live Radio',
+    artist: 'Sheetal FM',
     album: 'Live Radio',
     artwork: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }]
   });
@@ -552,8 +557,8 @@ setInterval(function(){
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: j.title,
-          artist: 'RJ Sheetal · Live Radio',
-          album: 'RJ Sheetal',
+          artist: 'Sheetal FM · Live Radio',
+          album: 'Sheetal FM',
           artwork: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }]
         });
       }
@@ -629,7 +634,7 @@ function requestTrack(uri) {
     return r.json().then(function(j){ return { ok: r.ok, j: j }; });
   }).then(function(res){
     if (res.ok) {
-      toast('in the queue! coming up on RJ Sheetal');
+      toast('in the queue! coming up on Sheetal FM');
       document.getElementById('q').value = '';
       resultsEl.innerHTML = '';
       renderQueue([]);
@@ -711,7 +716,7 @@ function askRJ(text) {
       var reply = data.reply || 'RJ voice is temporarily unavailable.';
       rjReply.hidden = false;
       rjReply.textContent = reply;
-      rjStatus.textContent = data.tool ? ('Tool used: ' + data.tool.name) : 'RJ Sheetal';
+      rjStatus.textContent = data.tool ? ('Tool used: ' + data.tool.name) : 'Sheetal FM AI RJ';
       if (data.audio) {
         if (rjAudio) rjAudio.pause();
         rjAudio = new Audio(data.audio);

@@ -1,4 +1,4 @@
-# RJ Sheetal — Live Radio
+# Sheetal FM — Live Radio
 
 Mobile-first radio station at **rj.vishalojha.me**. Listeners stream your live show
 and request any song from the Spotify catalog. The installable PWA keeps the live

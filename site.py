@@ -221,6 +221,29 @@ def search_tracks(q, limit=6):
     return out
 
 
+def playlist_tracks(limit=20):
+    playlist_id = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip()
+    if not playlist_id:
+        return []
+    d = spotify_get(f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/tracks?limit={limit}&market=IN")
+    out = []
+    for item in d.get("items", []):
+        t = item.get("track") or {}
+        if not t.get("uri"):
+            continue
+        images = t.get("album", {}).get("images") or []
+        out.append({
+            "uri": t.get("uri", ""),
+            "id": t.get("id", ""),
+            "name": t.get("name", ""),
+            "artist": ", ".join(a["name"] for a in t.get("artists", [])),
+            "album": (t.get("album") or {}).get("name", ""),
+            "art": images[0]["url"] if images else "",
+            "dur_ms": t.get("duration_ms", 0),
+        })
+    return out
+
+
 def find_track(uri):
     tid = uri.split(":")[-1]
     try:
@@ -421,6 +444,12 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
             self._json(200, {"results": search_tracks(q[:200])})
+        elif path == "/api/playlist":
+            try:
+                self._json(200, {"configured": bool(os.environ.get("SPOTIFY_PLAYLIST_ID")), "results": playlist_tracks()})
+            except Exception as e:
+                log(f"playlist error: {e!r}")
+                self._json(502, {"configured": True, "results": [], "error": "Spotify playlist unavailable"})
         elif path == "/api/queue":
             self._json(200, {"queue": load_queue()})
         elif path == "/api/agent/now-playing":

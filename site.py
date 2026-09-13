@@ -233,10 +233,10 @@ def playlist_tracks(limit=20):
     playlist_id = SPOTIFY_PLAYLIST_ID
     if not playlist_id:
         return []
-    d = spotify_get(f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/tracks?limit={limit}&market=IN")
+    d = spotify_get(f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/items?limit={limit}&market=IN")
     out = []
     for item in d.get("items", []):
-        t = item.get("track") or {}
+        t = item.get("item") or item.get("track") or {}
         if not t.get("uri"):
             continue
         images = t.get("album", {}).get("images") or []

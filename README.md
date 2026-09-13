@@ -2,7 +2,7 @@
 
 Personal assistant at **rj.vishalojha.me** with private Spotify music, requests,
 memory, and optional voice/text help. The installable PWA keeps the music player
-available in the background, with lock-screen play/pause controls. Runs on a Hetzner VPS via **Coolify**
+available while the browser is open, with best-effort media controls. Runs on a Hetzner VPS via **Coolify**
 (Docker + Traefik + Let's Encrypt, zero config).
 
 ```
@@ -51,9 +51,25 @@ listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
 6. Coolify auto-sets `PORT` — the app listens on whatever Coolify injects.
 
 > Spotify app: create one free at https://developer.spotify.com/dashboard → App → copy
-> Client ID & Secret. No redirect URI needed (we only use client-credentials + API).
+> Client ID & Secret. Add the exact redirect URI `https://rj.vishalojha.me/` to the app.
 
-## 3. Home PC (the DJ machine)
+## 3. Phone setup (Android and iPhone)
+
+Each phone is a separate Spotify browser device, so connect Sheetal’s Premium
+Spotify account once on each phone. The app uses PKCE, so the client secret is
+never sent to a phone.
+
+1. Open the site in Chrome on Android or Safari on iPhone and use **Add to Home Screen**.
+2. Open the installed app, tap **Connect Spotify**, finish sign-in, then tap **Play**.
+3. Keep the app open while listening. iPhone may require another Play tap after a device transfer.
+4. Open **Listen with Sheetal** to see the active Spotify device and transfer playback.
+5. If the microphone is denied or unreliable, use the typed assistant box; voice requires HTTPS and a fresh user tap.
+
+Spotify permits only one active playback device for the account. The web version
+cannot guarantee playback or live voice after the phone is locked, the browser is
+suspended, or the OS kills the PWA. That requires a native Android/iOS client.
+
+## 4. Home PC (the DJ machine)
 
 ```bash
 cd ~/"Documents/Default Project/dj"
@@ -78,7 +94,7 @@ python3 uplink.py          # Ctrl+C stops it
 Run `uplink.py` under systemd or a terminal/tmux on the DJ machine. It only needs
 **outbound** HTTPS to the VPS — no router ports, no static IP required.
 
-## 4. Public API (used by the site)
+## 5. Public API (used by the site)
 
 | method | path | auth | purpose |
 |---|---|---|---|
@@ -94,7 +110,7 @@ Run `uplink.py` under systemd or a terminal/tmux on the DJ machine. It only need
 | GET | `/api/stream` | – | live MP3 for the player |
 | GET | `/healthz` | – | Coolify health check |
 
-## Local dev / testing without the flow meter
+## 6. Local dev / testing without the flow meter
 
 ```bash
 PORT=8080 RJSHEETAL_TOKEN=dev RJSHEETAL_DATA=/tmp/rjdata \

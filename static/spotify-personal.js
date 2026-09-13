@@ -37,7 +37,6 @@
   function intercept(event){event.preventDefault();event.stopImmediatePropagation();start()}
   connect.addEventListener('click',intercept,true);
   document.querySelectorAll('#homePlay,#playerPlay').forEach(button=>button.addEventListener('click',intercept,true));
-  document.getElementById('playlistButton').addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();loadPlaylist()},true);
   document.addEventListener('sheetal:play-uri',event=>{if(!deviceId){sessionStorage.setItem('sheetal-pending-play',event.detail.uri);setStatus('Starting Spotify for this track…');return start()}api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[event.detail.uri]})}).then(()=>setStatus('Playing selected queue item.')).catch(e=>setStatus(e.message))});
   let linkedUri='';
   // Serialize the end-of-song handoff: RJ audio must finish before the next

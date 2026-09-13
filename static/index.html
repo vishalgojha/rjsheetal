@@ -79,6 +79,16 @@ h1,h2,h3{color:#f4eadc}
   .life-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.life-box{min-width:0;padding:11px;border:1px solid var(--line);border-radius:13px;background:#080807}.life-box>strong{font-size:12px}.life-list{display:grid;gap:7px;margin-top:9px;min-height:20px}.life-row label{display:flex;align-items:flex-start;gap:7px;color:var(--ink);font-size:11px;line-height:1.3}.life-row input{margin:1px 0 0;accent-color:var(--orange)}.life-row span{min-width:0;overflow-wrap:anywhere}.life-row small,.life-note span{display:block;color:var(--muted);font-size:9px;margin-top:2px}.life-muted{color:var(--muted);font-size:10px;line-height:1.35}.life-form{display:flex;gap:5px;margin-top:10px}.life-form input,.life-note-form input,.life-note-form textarea{min-width:0;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;outline:0;color:var(--ink);background:#11100f;font-size:10px}.life-form input:focus,.life-note-form input:focus,.life-note-form textarea:focus{border-color:var(--orange)}.life-form button,.life-note-form button{flex:none;padding:0 7px;border:1px solid #8f462b;border-radius:8px;color:var(--ink);background:#8f462b;font-size:9px;font-weight:800}.life-notes{margin-top:9px}.life-note-form{display:grid;gap:6px;margin-top:10px}.life-note-form button{min-height:29px}.life-memory{margin-top:10px;color:#c5b4a1;font-size:10px;line-height:1.4}.life-message{min-height:14px;margin-top:8px!important;color:var(--orange)!important;font-size:10px!important}
   @media (max-width:380px){.life-grid{grid-template-columns:1fr}.life-box{padding:10px}}
 </style>
+<style>
+  .email-panel{margin:0 0 20px;padding:14px;border:1px solid #47372e;border-radius:18px;background:#11100f}
+  .email-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.email-head h2{margin-top:3px;font-size:17px}.email-head button{border:0;color:var(--orange);background:transparent;font-size:10px;font-weight:800}
+  .email-context{margin:7px 0 0;color:var(--muted);font-size:10px;line-height:1.4}.email-badge{flex:none;padding:5px 7px;border-radius:7px;color:#d9c9b8;background:#2a201b;font-size:9px;font-weight:800;letter-spacing:.06em}.email-badge.connected{color:#d9e4bf;background:#273020}.email-badge.locked{color:#e6c69f;background:#30251d}
+  .email-connection{display:flex;align-items:center;gap:9px;min-width:0;margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#080807}.email-app-icon{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:8px;color:#f4eadc;background:#8f462b;font-size:15px}.email-connection-copy{min-width:0;flex:1}.email-connection-copy strong,.email-connection-copy small{display:block;overflow:hidden;text-overflow:ellipsis}.email-connection-copy strong{font-size:11px}.email-connection-copy small{margin-top:3px;color:var(--muted);font-size:9px;line-height:1.35;white-space:normal}.email-connection-state{flex:none;color:var(--muted);font-size:9px;font-weight:800;text-align:right}.email-capabilities{margin:9px 0 0;color:#cbbba9;font-size:9px;line-height:1.4}
+  .email-status{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.4}.email-actions{display:flex;gap:7px;margin-top:11px}.email-actions button{flex:1;min-height:36px;border:1px solid #47372e;border-radius:10px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}.email-actions button.secondary{color:#cbbba9;background:#171311}.email-actions button:disabled{opacity:.55}
+  .email-unlock{display:flex;gap:7px;margin-top:9px}.email-unlock[hidden]{display:none}.email-unlock input{min-width:0;flex:1;padding:9px;border:1px solid #47372e;border-radius:9px;color:var(--ink);background:#080807;font-size:12px}.email-unlock button{padding:0 10px;border:0;border-radius:9px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}
+  .email-search{display:flex;gap:7px;margin-top:10px}.email-search[hidden]{display:none}.email-search input{min-width:0;flex:1;padding:9px;border:1px solid #47372e;border-radius:9px;color:var(--ink);background:#080807;font-size:11px}.email-search button{padding:0 10px;border:1px solid #47372e;border-radius:9px;color:#cbbba9;background:#171311;font-size:10px;font-weight:800}
+  .email-list{display:grid;gap:7px;margin-top:10px}.email-list:empty{display:none}.email-item{min-width:0;padding:10px;border:1px solid #302723;border-radius:11px;background:#080807}.email-item strong,.email-item span,.email-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.email-item strong{font-size:11px}.email-item span{margin-top:3px;color:#cbbba9;font-size:10px}.email-item small{margin-top:4px;color:var(--muted);font-size:10px;line-height:1.35;white-space:normal}.email-message{min-height:14px;margin-top:8px;color:var(--orange);font-size:10px;line-height:1.35}
+</style>
 <script>window.SHEETAL_PERSONAL_MODE=true;</script><script src="/app.js"></script>
 <script type="module" src="/rj-lazy.js"></script>
 <script src="/spotify-personal.js"></script>
@@ -95,7 +105,7 @@ h1,h2,h3{color:#f4eadc}
   document.querySelector('.view[data-view="queue"] .sub')?.replaceChildren(document.createTextNode('Music requests handled by your assistant.'));
 
   const assistantStyle = document.createElement('style');
-  assistantStyle.textContent = '.assistant-command{margin:0 0 20px;padding:14px;border:1px solid #47372e;border-radius:18px;background:#11100f}.assistant-command .eyebrow{margin-bottom:4px}.assistant-command strong{display:block;font-size:16px}.assistant-command p{margin-top:4px;color:var(--muted);font-size:11px;line-height:1.35}.assistant-form{display:flex;gap:8px;margin-top:11px}.assistant-form input{min-width:0;flex:1;padding:11px 12px;border:1px solid #47372e;border-radius:11px;outline:0;color:var(--ink);background:#080807;font-size:13px}.assistant-form input:focus{border-color:var(--orange)}.assistant-form button{flex:none;padding:0 13px;border:0;border-radius:11px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}.assistant-form button:disabled{opacity:.55}.assistant-status{min-height:16px;margin-top:9px!important;color:#c5b4a1!important}.assistant-reply{display:none;margin-top:10px;padding:10px;border-left:2px solid var(--orange);color:#f4eadc;font-size:12px;line-height:1.4}.assistant-reply:not(:empty){display:block}@media(min-width:700px){.assistant-command{max-width:760px;margin:0 auto 24px}}
+  assistantStyle.textContent = '.assistant-command{margin:0 0 20px;padding:14px;border:1px solid #47372e;border-radius:18px;background:#11100f}.assistant-command .eyebrow{margin-bottom:4px}.assistant-command strong{display:block;font-size:16px}.assistant-command p{margin-top:4px;color:var(--muted);font-size:11px;line-height:1.35}.assistant-form{display:flex;gap:8px;margin-top:11px}.assistant-form input{min-width:0;flex:1;padding:11px 12px;border:1px solid #47372e;border-radius:11px;outline:0;color:var(--ink);background:#080807;font-size:13px}.assistant-form input:focus{border-color:var(--orange)}.assistant-form button{flex:none;padding:0 13px;border:0;border-radius:11px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}.assistant-form button:disabled{opacity:.55}.assistant-status{min-height:16px;margin-top:9px!important;color:#c5b4a1!important}.assistant-reply{display:none;margin-top:10px;padding:10px;border-left:2px solid var(--orange);color:#f4eadc;font-size:12px;line-height:1.4}.assistant-reply:not(:empty){display:block}@media(min-width:700px){.assistant-command{max-width:760px;margin:0 auto 24px}}';
   document.head.append(assistantStyle);
   const homeView = document.querySelector('.view[data-view="home"]');
   if (homeView && !document.getElementById('assistantChat')) {
@@ -116,6 +126,67 @@ h1,h2,h3{color:#f4eadc}
     assistantView.querySelector('h1').textContent = 'Your personal assistant.';
     assistantView.querySelector('.sub').textContent = 'Ask for help, planning, reflection, or music whenever you need it.';
   }
+</script>
+<script>
+  (() => {
+    const home = document.querySelector('.view[data-view="home"]');
+    const live = home?.querySelector('.live-card');
+    if (!live || document.getElementById('emailPanel')) return;
+    live.insertAdjacentHTML('beforebegin', `<section class="email-panel" id="emailPanel" aria-label="Connected apps"><div class="email-head"><div><div class="eyebrow">CONNECTED APPS · COMPOSIO</div><h2>Connect the help she wants.</h2><p class="email-context">Composio securely connects Sheetal’s apps to her assistant. Gmail access is read-only.</p></div><span class="email-badge" id="emailBadge">CHECKING</span></div><div class="email-connection"><span class="email-app-icon" aria-hidden="true">✉</span><div class="email-connection-copy"><strong>Gmail</strong><small>Find important messages and prepare a simple daily brief.</small></div><span class="email-connection-state" id="emailConnectionState">Checking…</span></div><p class="email-capabilities">Can read and search email · cannot send, delete, or change anything.</p><p class="email-status" id="emailStatus">Checking your Gmail connection…</p><div class="email-actions"><button id="emailConnect" type="button">CONNECT GMAIL</button><button id="emailInbox" class="secondary" type="button">CHECK INBOX</button></div><div class="email-unlock" id="emailUnlock" hidden><input id="emailCode" type="password" autocomplete="current-password" placeholder="Private assistant code" aria-label="Private assistant code"><button id="emailUnlockButton" type="button">UNLOCK</button></div><form class="email-search" id="emailSearch" hidden><input id="emailQuery" placeholder="Search email, e.g. is:unread" aria-label="Search email"><button type="submit">SEARCH</button></form><div class="email-list" id="emailList"></div><p class="email-message" id="emailMessage" aria-live="polite"></p></section>`);
+    const $e = id => document.getElementById(id);
+    const escEmail = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let current = null;
+    async function emailJSON(url, options = {}) {
+      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', ...options});
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error || 'Email request failed');
+      return data;
+    }
+    function message(text) { $e('emailMessage').textContent = text || ''; }
+    function showUnlock(show) { $e('emailUnlock').hidden = !show; if (show) $e('emailCode').focus(); }
+    function setConnectionState(badge, state, className = '') { $e('emailBadge').textContent = badge; $e('emailBadge').className = 'email-badge' + (className ? ' ' + className : ''); $e('emailConnectionState').textContent = state; }
+    function renderMessages(messages) {
+      $e('emailList').innerHTML = (messages || []).map(item => `<article class="email-item"><strong>${escEmail(item.subject)}</strong><span>${escEmail(item.from)}${item.unread ? ' · UNREAD' : ''}</span><small>${escEmail(item.snippet)}</small></article>`).join('');
+    }
+    function renderStatus(data) {
+      current = data;
+      const connect = $e('emailConnect');
+      const inbox = $e('emailInbox');
+      if (data.setup_required) {
+        setConnectionState('SETUP NEEDED', 'Needs setup');
+        $e('emailStatus').textContent = 'The assistant needs its Composio key and private access code before Gmail can be connected.';
+        connect.textContent = 'SET UP GMAIL'; connect.disabled = true; inbox.disabled = true; $e('emailSearch').hidden = true; showUnlock(false); return;
+      }
+      if (!data.authorized) {
+        setConnectionState('LOCKED', 'Private code', 'locked');
+        $e('emailStatus').textContent = 'Private access is locked on this phone.';
+        connect.textContent = 'UNLOCK FIRST'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; showUnlock(false); return;
+      }
+      if (!data.connected) {
+        setConnectionState('READY', 'Not connected');
+        $e('emailStatus').textContent = 'Connect Sheetal’s Gmail once; the assistant can then help sort and find messages.';
+        connect.textContent = 'CONNECT GMAIL'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; return;
+      }
+      setConnectionState('CONNECTED', 'Connected', 'connected');
+      $e('emailStatus').textContent = `Connected${data.email ? ` · ${data.email}` : ''}. Read-only inbox access is on.`;
+      connect.textContent = 'RECONNECT'; connect.disabled = false; inbox.disabled = false; $e('emailSearch').hidden = false;
+    }
+    async function refreshStatus() { try { renderStatus(await emailJSON('/api/email/status')); } catch (_) { $e('emailStatus').textContent = 'Email status is temporarily unavailable.'; } }
+    async function loadInbox(query = '') {
+      if (!current?.authorized) { showUnlock(true); return; }
+      if (!current.connected) { message('Connect Gmail first.'); return; }
+      $e('emailInbox').disabled = true; message('Reading Gmail…');
+      try { const data = await emailJSON('/api/email/inbox?limit=8' + (query ? '&q=' + encodeURIComponent(query) : '')); renderMessages(data.messages); message(data.messages?.length ? '' : 'No matching messages.'); }
+      catch (error) { message(error.message); }
+      finally { $e('emailInbox').disabled = false; }
+    }
+    $e('emailRefresh').addEventListener('click', refreshStatus);
+    $e('emailConnect').addEventListener('click', () => { if (!current?.authorized) return showUnlock(true); if (current?.connected || !current?.setup_required) window.location.href = '/api/email/connect'; });
+    $e('emailInbox').addEventListener('click', () => loadInbox());
+    $e('emailUnlockButton').addEventListener('click', async () => { const code = $e('emailCode').value.trim(); if (!code) return message('Enter the private assistant code.'); try { await emailJSON('/api/email/unlock', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}); $e('emailCode').value = ''; showUnlock(false); message('Unlocked on this phone.'); await refreshStatus(); } catch (error) { message(error.message); } });
+    $e('emailSearch').addEventListener('submit', event => { event.preventDefault(); loadInbox($e('emailQuery').value.trim()); });
+    refreshStatus();
+  })();
 </script>
 </body>
 </html>

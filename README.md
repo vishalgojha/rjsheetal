@@ -17,6 +17,11 @@ Create a public-repository application from this repository and set:
 | `SPOTIFY_PLAYLIST_ID` | Optional starting playlist |
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS/assistant integration |
 | `ELEVENLABS_AGENT_ID` | Optional agent id override |
+| `COMPOSIO_API_KEY` | Composio project API key for the managed Gmail connection |
+| `COMPOSIO_USER_ID` | Stable Composio user id; use `sheetal` |
+| `COMPOSIO_CALLBACK_URL` | `https://rj.vishalojha.me/api/email/callback` |
+| `RJSHEETAL_PRIVATE_CODE` | Private owner code required before Gmail access |
+| `RJSHEETAL_AGENT_TOKEN` | Optional secret for a protected ElevenLabs Gmail tool |
 
 Add a persistent Coolify volume mounted at `/data`. This stores Sheetal’s
 tasks, notes, shopping list, plans, preferences, music state, and request
@@ -33,6 +38,29 @@ browser uses PKCE, so the Spotify client secret never reaches the phone.
 3. Tap **Connect Spotify** and finish Spotify sign-in.
 4. Ask the assistant to play, pause, resume, skip, replay, choose a song, or
    choose a playlist.
+
+### Gmail setup
+
+Gmail is an optional, read-only personal assistant capability. Create a
+Composio project/API key, enable the Gmail toolkit, and set the Composio
+variables above in Coolify. The callback URL must be exactly
+`https://rj.vishalojha.me/api/email/callback`. On her phone, Sheetal enters the
+private assistant code once, taps **Connect Gmail**, and completes the hosted
+Google consent flow. Composio stores and refreshes the provider connection;
+this app stores only the Composio session id in the persistent `/data` volume,
+so she does not repeat setup on every device.
+
+The app creates a restricted Composio session with the read-only
+`GMAIL_FETCH_EMAILS` tool. No Google client secret is needed in Coolify.
+
+The first version only reads message metadata and snippets. Sending, replying,
+archiving, deleting, and calendar changes should be added later with explicit
+confirmation in the assistant.
+
+For an ElevenLabs custom tool, call `POST /api/agent/email-inbox` with
+`X-RJ-Agent-Token` and a JSON body such as `{"query":"is:unread","limit":8}`.
+The endpoint is protected separately from the mobile browser cookie and reads
+through the same Composio-managed Gmail connection.
 
 Only one Spotify device can play for the account at a time. The main screen
 shows a compact “Playing on” handoff when more than one phone/browser is
@@ -52,6 +80,8 @@ The ElevenLabs agent uses webhook tools backed by this app to:
 - read music state and control Spotify on the active browser;
 - use the attached Rekhta knowledge base when a relevant reflective thought
   genuinely fits.
+- read a protected Gmail inbox and search it with Gmail query syntax after
+  Sheetal explicitly connects her account;
 
 These are persistent in-app records. They are not phone notifications or
 external bookings unless a separate integration is added.

@@ -16,14 +16,17 @@ radio.py architecture:
 """
 import base64
 import datetime
+import hashlib
 import json
 import os
+import secrets
 import socket
 import sys
 import threading
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,6 +42,7 @@ SHOPPING_FILE = os.path.join(DATA_DIR, "shopping.json")
 PLANS_FILE = os.path.join(DATA_DIR, "plans.json")
 MUSIC_COMMAND_FILE = os.path.join(DATA_DIR, "music-command.json")
 MUSIC_STATE_FILE = os.path.join(DATA_DIR, "music-state.json")
+COMPOSIO_SESSION_FILE = os.path.join(DATA_DIR, "composio-session.json")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
@@ -54,12 +58,20 @@ RATE_LIMIT = int(os.environ.get("RJSHEETAL_RATE_LIMIT", "3"))
 SPOTIFY_TIMEOUT_S = float(os.environ.get("RJSHEETAL_SPOTIFY_TIMEOUT", "6"))
 
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
+AGENT_TOKEN = os.environ.get("RJSHEETAL_AGENT_TOKEN", "").strip() or SHARED_TOKEN
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "7qBNUtXRGP0jPi0H4r8k")
 # v3 conversational is for the live agent session, not the REST TTS endpoint
 # used by the one-shot RJ fallback.
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
+COMPOSIO_API_KEY = os.environ.get("COMPOSIO_API_KEY", "").strip()
+COMPOSIO_API_BASE = os.environ.get("COMPOSIO_API_BASE", "https://backend.composio.dev/api/v3.1").rstrip("/")
+COMPOSIO_USER_ID = os.environ.get("COMPOSIO_USER_ID", "sheetal").strip() or "sheetal"
+COMPOSIO_CALLBACK_URL = os.environ.get("COMPOSIO_CALLBACK_URL", "").strip()
+# Email is deliberately disabled until the public app has an owner-only gate.
+# Set this to a private passphrase in Coolify; never put it in the frontend.
+RJSHEETAL_PRIVATE_CODE = os.environ.get("RJSHEETAL_PRIVATE_CODE", "").strip()
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "").strip()
 SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip() or "2JXK0KRt8pLkmUqIPPmmQQ"
@@ -545,6 +557,208 @@ def agent_music_control(action, query="", playlist_id="", position_ms=0):
     return issue_music_command(action, payload)
 
 
+# ---------------------------------------------------------------- email / Composio
+EMAIL_COOKIE = "rj_email_access"
+
+
+class ComposioNotConnected(RuntimeError):
+    pass
+
+
+def email_configured():
+    return bool(COMPOSIO_API_KEY and RJSHEETAL_PRIVATE_CODE)
+
+
+def email_cookie_value():
+    return hashlib.sha256(RJSHEETAL_PRIVATE_CODE.encode("utf-8")).hexdigest() if RJSHEETAL_PRIVATE_CODE else ""
+
+
+def request_cookie(handler, name):
+    raw = handler.headers.get("Cookie", "")
+    for part in raw.split(";"):
+        key, _, value = part.strip().partition("=")
+        if key == name:
+            return value
+    return ""
+
+
+def email_authorized(handler):
+    expected = email_cookie_value()
+    return bool(expected and secrets.compare_digest(request_cookie(handler, EMAIL_COOKIE), expected))
+
+
+def composio_session_record():
+    data = read_json(COMPOSIO_SESSION_FILE, {})
+    return data if isinstance(data, dict) else {}
+
+
+def save_composio_session(data):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    write_json(COMPOSIO_SESSION_FILE, data)
+    try:
+        os.chmod(COMPOSIO_SESSION_FILE, 0o600)
+    except OSError:
+        pass
+
+
+def composio_request(method, path, payload=None):
+    if not COMPOSIO_API_KEY:
+        raise RuntimeError("Composio is not configured")
+    body = None
+    headers = {
+        "x-api-key": COMPOSIO_API_KEY,
+        "Accept": "application/json",
+    }
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(COMPOSIO_API_BASE + path, data=body, method=method, headers=headers)
+    with urllib.request.urlopen(req, timeout=18) as response:
+        return json.loads(response.read() or b"{}")
+
+
+def composio_callback_url(handler):
+    if COMPOSIO_CALLBACK_URL:
+        return COMPOSIO_CALLBACK_URL
+    proto = (handler.headers.get("X-Forwarded-Proto") or "https").split(",")[0].strip()
+    host = handler.headers.get("X-Forwarded-Host") or handler.headers.get("Host", "")
+    return f"{proto}://{host}/api/email/callback"
+
+
+def composio_session(handler, create=False):
+    record = composio_session_record()
+    session_id = str(record.get("session_id") or "")
+    if session_id:
+        try:
+            return composio_request("GET", "/tool_router/session/" + urllib.parse.quote(session_id, safe=""))
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404:
+                raise
+    if not create:
+        return None
+    data = composio_request("POST", "/tool_router/session", {
+        "user_id": COMPOSIO_USER_ID,
+        "toolkits": {"enable": ["gmail"]},
+        "tools": {"gmail": {"enable": ["GMAIL_FETCH_EMAILS"]}},
+        "tags": {"enable": ["readOnlyHint"], "disable": ["destructiveHint"]},
+        "workbench": {"enable": False},
+        "manage_connections": {
+            "enabled": True,
+            "callback_url": composio_callback_url(handler),
+            "enable_wait_for_connections": False,
+        },
+    })
+    session_id = str(data.get("session_id") or "")
+    if not session_id:
+        raise RuntimeError("Composio did not return a session")
+    save_composio_session({"session_id": session_id, "user_id": COMPOSIO_USER_ID, "updated_at": timestamp()})
+    return data
+
+
+def connected_gmail_accounts(session):
+    config = (session or {}).get("config") or {}
+    accounts = config.get("all_connected_accounts") or config.get("connected_accounts") or {}
+    if not isinstance(accounts, dict):
+        return []
+    result = []
+    for key, value in accounts.items():
+        if "gmail" not in str(key).lower():
+            continue
+        if isinstance(value, list):
+            result.extend(str(item) for item in value if item)
+        elif value:
+            result.append(str(value))
+    return result
+
+
+def email_status(handler):
+    if not COMPOSIO_API_KEY:
+        return {"configured": False, "authorized": email_authorized(handler), "connected": False,
+                "email": "", "setup_required": True, "provider": "composio"}
+    if not RJSHEETAL_PRIVATE_CODE:
+        return {"configured": True, "authorized": False, "connected": False,
+                "email": "", "setup_required": True, "provider": "composio"}
+    authorized = email_authorized(handler)
+    if not authorized:
+        return {"configured": True, "authorized": False, "connected": False,
+                "email": "", "setup_required": False, "provider": "composio"}
+    try:
+        session = composio_session(handler, create=True)
+        accounts = connected_gmail_accounts(session)
+        return {"configured": True, "authorized": True, "connected": bool(accounts),
+                "email": "", "account_count": len(accounts), "setup_required": False, "provider": "composio"}
+    except Exception as exc:
+        log(f"composio status error: {exc!r}")
+        return {"configured": True, "authorized": True, "connected": False,
+                "email": "", "setup_required": False, "provider": "composio",
+                "error": "Composio is temporarily unavailable"}
+
+
+def email_connect_url(handler):
+    session = composio_session(handler, create=True)
+    session_id = str((session or {}).get("session_id") or composio_session_record().get("session_id") or "")
+    if not session_id:
+        raise RuntimeError("Composio session is unavailable")
+    linked = composio_request("POST", "/tool_router/session/" + urllib.parse.quote(session_id, safe="") + "/link", {
+        "toolkit": "gmail",
+        "alias": "Sheetal Gmail",
+        "callback_url": composio_callback_url(handler),
+    })
+    redirect_url = str(linked.get("redirect_url") or "")
+    if not redirect_url:
+        raise RuntimeError("Composio did not return a connection link")
+    return redirect_url
+
+
+def normalize_email_messages(raw):
+    payload = raw.get("data", raw) if isinstance(raw, dict) else raw
+    items = []
+    if isinstance(payload, list):
+        items = payload
+    elif isinstance(payload, dict):
+        for key in ("emails", "messages", "results", "items"):
+            if isinstance(payload.get(key), list):
+                items = payload[key]
+                break
+        if not items:
+            nested = payload.get("response_data") or payload.get("result")
+            if isinstance(nested, dict):
+                return normalize_email_messages(nested)
+    output = []
+    for item in items[:20]:
+        if not isinstance(item, dict):
+            continue
+        labels = item.get("label_ids") or item.get("labelIds") or item.get("labels") or []
+        if not isinstance(labels, list):
+            labels = [labels]
+        output.append({
+            "id": str(item.get("id") or item.get("message_id") or ""),
+            "thread_id": str(item.get("thread_id") or item.get("threadId") or ""),
+            "from": clean_text(item.get("from") or item.get("sender") or item.get("sender_email"), 240),
+            "subject": clean_text(item.get("subject") or "(no subject)", 240),
+            "date": clean_text(item.get("date") or item.get("received_at") or "", 100),
+            "snippet": clean_text(item.get("snippet") or item.get("preview") or item.get("body") or "", 300),
+            "unread": bool(item.get("unread") or item.get("is_unread") or "UNREAD" in labels),
+        })
+    return output
+
+
+def gmail_messages(handler, query="", limit=8):
+    session = composio_session(handler, create=True)
+    accounts = connected_gmail_accounts(session)
+    if not accounts:
+        raise ComposioNotConnected("connect Gmail first")
+    session_id = str((session or {}).get("session_id") or "")
+    args = {"max_results": max(1, min(safe_int(limit, 8), 20))}
+    if clean_text(query, 180):
+        args["query"] = clean_text(query, 180)
+    raw = composio_request("POST", "/tool_router/session/" + urllib.parse.quote(session_id, safe="") + "/execute", {
+        "tool_slug": "GMAIL_FETCH_EMAILS",
+        "arguments": args,
+    })
+    return normalize_email_messages(raw)
+
+
 # ---------------------------------------------------------------- spotify
 SPOT_TOKEN = {"value": None, "expires": 0.0}
 CREDS = {}
@@ -852,10 +1066,23 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False))
 
+    def _redirect(self, location):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _authed(self):
         if not SHARED_TOKEN:
             return True
         return (self.headers.get("X-RJ-Token") or "") == SHARED_TOKEN
+
+    def _agent_authed(self):
+        if not AGENT_TOKEN:
+            return False
+        supplied = self.headers.get("X-RJ-Agent-Token") or self.headers.get("X-RJ-Token") or ""
+        return secrets.compare_digest(supplied, AGENT_TOKEN)
 
     def _client_ip(self):
         fwd = self.headers.get("X-Forwarded-For", "")
@@ -915,6 +1142,38 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, memory_context())
         elif path == "/api/assistant/dashboard":
             self._json(200, assistant_dashboard())
+        elif path == "/api/email/status":
+            self._json(200, email_status(self))
+        elif path == "/api/email/connect":
+            if not email_configured():
+                self._json(503, {"ok": False, "error": "Gmail integration is not configured yet"})
+            elif not email_authorized(self):
+                self._json(403, {"ok": False, "error": "unlock the personal assistant first"})
+            else:
+                try:
+                    self._redirect(email_connect_url(self))
+                except Exception as exc:
+                    log(f"composio connect error: {exc!r}")
+                    self._json(502, {"ok": False, "error": "Gmail connection is temporarily unavailable"})
+        elif path == "/api/email/callback":
+            # Composio completes the provider OAuth flow and returns here. The
+            # hosted connection page is responsible for the actual callback.
+            self._redirect("/?email=connected")
+        elif path == "/api/email/inbox":
+            if not email_authorized(self):
+                self._json(403, {"ok": False, "error": "unlock the personal assistant first"})
+                return
+            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            query = params.get("q", [""])[0]
+            limit = params.get("limit", ["8"])[0]
+            try:
+                self._json(200, {"ok": True, "connected": True, "email": "",
+                                 "messages": gmail_messages(self, query, limit)})
+            except ComposioNotConnected:
+                self._json(409, {"ok": False, "connected": False, "error": "connect Gmail first"})
+            except Exception as exc:
+                log(f"gmail inbox error: {exc!r}")
+                self._json(502, {"ok": False, "error": "Gmail is temporarily unavailable."})
         elif path == "/api/tasks":
             self._json(200, {"tasks": load_list(TASKS_FILE)})
         elif path == "/api/notes":
@@ -1018,6 +1277,28 @@ class Handler(BaseHTTPRequestHandler):
             st["ts"] = time.time()
             write_json(AUDIO_FILE, st)
             self._json(200, {"ok": True})
+        elif path == "/api/email/unlock":
+            supplied = str(body.get("code") or "").strip()
+            if not RJSHEETAL_PRIVATE_CODE:
+                self._json(503, {"ok": False, "error": "private assistant access is not configured"})
+                return
+            if not supplied or not secrets.compare_digest(supplied, RJSHEETAL_PRIVATE_CODE):
+                self._json(403, {"ok": False, "error": "that access code is not correct"})
+                return
+            self._send(200, json.dumps({"ok": True}), extra={
+                "Set-Cookie": f"{EMAIL_COOKIE}={email_cookie_value()}; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax",
+            })
+        elif path == "/api/email/disconnect":
+            if not email_authorized(self):
+                self._json(403, {"ok": False, "error": "unlock the personal assistant first"})
+                return
+            try:
+                os.remove(COMPOSIO_SESSION_FILE)
+            except FileNotFoundError:
+                pass
+            self._send(200, json.dumps({"ok": True, "message": "Local Gmail session cleared"}), extra={
+                "Set-Cookie": f"{EMAIL_COOKIE}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax",
+            })
         elif path == "/api/memory/event":
             event = body if isinstance(body, dict) else {}
             if event.get("type") not in ("play", "skip", "replay", "request", "conversation", "mood", "preference", "taste"):
@@ -1142,6 +1423,27 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(429, {"ok": False, "error": msg})
                 return
             self._json(200, agent_music_control(body.get("action"), body.get("query"), body.get("playlist_id"), body.get("position_ms", 0)))
+        elif path == "/api/agent/email-inbox":
+            if not self._agent_authed():
+                self._json(403, {"ok": False, "error": "email assistant tool is not authorized"})
+                return
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            query = body.get("q") or body.get("query") or ""
+            try:
+                session = composio_session(self, create=True)
+                if not connected_gmail_accounts(session):
+                    self._json(409, {"ok": False, "connected": False, "error": "Sheetal needs to connect Gmail first"})
+                    return
+                self._json(200, {"ok": True, "connected": True, "email": "",
+                                 "messages": gmail_messages(self, query, body.get("limit", 8))})
+            except ComposioNotConnected:
+                self._json(409, {"ok": False, "connected": False, "error": "Sheetal needs to connect Gmail first"})
+            except Exception as exc:
+                log(f"agent Composio Gmail error: {exc!r}")
+                self._json(502, {"ok": False, "error": "Gmail is temporarily unavailable."})
         elif path == "/api/request":
             ok, msg = ok_request(self._client_ip())
             if not ok:

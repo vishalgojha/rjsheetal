@@ -489,7 +489,7 @@ class Handler(BaseHTTPRequestHandler):
                 "queue_len": len(load_queue()),
             })
         elif path == "/api/spotify/config":
-            self._json(200, {"client_id": CREDS.get("cid", ""), "playlist_id": SPOTIFY_PLAYLIST_ID})
+            self._json(200, {"client_id": CREDS.get("cid", ""), "playlist_id": SPOTIFY_PLAYLIST_ID, "default_track": DEFAULT_TRACK_URI})
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
             try:

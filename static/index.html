@@ -58,8 +58,12 @@ h1,h2,h3{color:#f4eadc}
   @media (max-width: 430px) { .result { flex-wrap: wrap; } .result .track { flex-basis: calc(100% - 58px); } .result button { width: 100%; margin-left: 58px; } }
   .auto-rj { display:flex; align-items:center; gap:8px; margin-top:12px; color:var(--muted); font-size:11px; }
   .auto-rj input { accent-color:var(--orange); }
+  .queue-item { flex-wrap:wrap; }
+  .queue-actions { width:100%; display:flex; gap:7px; margin-left:58px; }
+  .queue-actions button { flex:1; padding:8px 6px; border:1px solid var(--line); border-radius:9px; color:var(--muted); background:transparent; font-size:10px; font-weight:800; }
+  .queue-actions button:first-child { color:#f4eadc; border-color:#8f462b; background:#8f462b; }
 </style>
-<script src="/app.js"></script>
+<script>window.SHEETAL_PERSONAL_MODE=true;</script><script src="/app.js"></script>
 <script type="module" src="/rj-lazy.js"></script>
 <script src="/spotify-personal.js"></script>
 </body>

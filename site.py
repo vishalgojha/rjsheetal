@@ -694,6 +694,18 @@ class Handler(BaseHTTPRequestHandler):
                     next_item["status"] = "claimed"
                 save_queue(q)
             self._json(200, {"item": next_item})
+        elif path == "/api/queue/remove":
+            rid = str(body.get("id") or "")
+            with QUEUE_LOCK:
+                q = load_queue()
+                found = False
+                for item in q:
+                    if item.get("id") == rid and item.get("status") != "done":
+                        item["status"] = "done"
+                        found = True
+                        break
+                save_queue(q)
+            self._json(200 if found else 404, {"ok": found})
         elif path == "/api/rj":
             message = str(body.get("message") or "")[:500]
             if not message:

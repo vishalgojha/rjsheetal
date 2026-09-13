@@ -29,5 +29,6 @@
   connect.addEventListener('click',intercept,true);
   document.querySelectorAll('#homePlay,#playerPlay').forEach(button=>button.addEventListener('click',intercept,true));
   document.getElementById('playlistButton').addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();loadPlaylist()},true);
+  document.addEventListener('sheetal:play-uri',event=>{if(!deviceId)return setStatus('Connect Spotify on this device first.');api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[event.detail.uri]})}).then(()=>setStatus('Playing selected queue item.')).catch(e=>setStatus(e.message))});
   prev.onclick=()=>player?.previousTrack();next.onclick=()=>player?.nextTrack();callback();
 })();

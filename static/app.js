@@ -50,7 +50,11 @@ async function toggleAudio() {
 function loadQueue() {
   getJSON('/api/queue', {}, 6000).then(data => {
     const items = (data.queue || []).filter(item => item.status !== 'done');
-    $('queue').innerHTML = items.length ? items.map(item => `<div class="queue-item"><div class="cover">${item.art ? `<img src="${esc(item.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(item.name)}</strong><span>${esc(item.artist || 'Sheetal FM')}${item.status === 'claimed' ? ' · ON AIR NOW' : ''}</span></div></div>`).join('') : '<div class="empty">No requests yet — be the first to put one on air.</div>';
+    $('queue').innerHTML = items.length ? items.map(item => `<div class="queue-item"><div class="cover">${item.art ? `<img src="${esc(item.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(item.name)}</strong><span>${esc(item.artist || 'Sheetal FM')}${item.status === 'claimed' ? ' · ON AIR NOW' : ''}</span></div><div class="queue-actions"><button data-queue-action="play" data-uri="${esc(item.uri)}">PLAY NOW</button><button data-queue-action="remove" data-id="${esc(item.id)}">REMOVE</button></div></div>`).join('') : '<div class="empty">No requests yet — be the first to put one on air.</div>';
+    $('queue').querySelectorAll('[data-queue-action]').forEach(button => button.addEventListener('click', async () => {
+      if (button.dataset.queueAction === 'play') return document.dispatchEvent(new CustomEvent('sheetal:play-uri', {detail:{uri:button.dataset.uri}}));
+      try { await getJSON('/api/queue/remove', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:button.dataset.id})}, 6000); loadQueue(); } catch (_) { toast('Could not remove that request.'); }
+    }));
   }).catch(() => $('queue').innerHTML = '<div class="empty">Queue temporarily unavailable.</div>');
 }
 async function requestSong(uri) {
@@ -107,7 +111,7 @@ audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('
 $('searchButton').addEventListener('click', searchSongs); $('query').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchSongs(); } });
 $('playlistButton').addEventListener('click', loadPlaylist); $('playlistResults').hidden = true;
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
-refreshStatus();
+if (!window.SHEETAL_PERSONAL_MODE) refreshStatus();
 loadQueue();
 /* A short Hindi orientation is offered once, after the listener's first tap. */
 if (!localStorage.getItem('sheetal-guide-v1') && 'speechSynthesis' in window) {

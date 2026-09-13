@@ -584,11 +584,31 @@ class Handler(BaseHTTPRequestHandler):
         bytes into the shared ring buffer.
         """
         try:
-            while True:
-                chunk = self.rfile.read(READ_CHUNK)
-                if not chunk:
-                    break
-                self.buf.append(chunk)
+            chunked = self.headers.get("Transfer-Encoding", "").lower() == "chunked"
+            if chunked:
+                while True:
+                    line = self.rfile.readline(64)
+                    if not line:
+                        break
+                    size_text = line.strip().split(b";", 1)[0]
+                    size = int(size_text, 16)
+                    if size == 0:
+                        self.rfile.readline(64)
+                        break
+                    remaining = size
+                    while remaining:
+                        chunk = self.rfile.read(min(READ_CHUNK, remaining))
+                        if not chunk:
+                            return
+                        self.buf.append(chunk)
+                        remaining -= len(chunk)
+                    self.rfile.read(2)
+            else:
+                while True:
+                    chunk = self.rfile.read(READ_CHUNK)
+                    if not chunk:
+                        break
+                    self.buf.append(chunk)
         except Exception:
             pass
         log("ingest source disconnected")

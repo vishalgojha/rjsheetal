@@ -98,3 +98,11 @@ $('searchButton').addEventListener('click', searchSongs); $('query').addEventLis
 $('playlistButton').addEventListener('click', loadPlaylist); $('playlistResults').hidden = true;
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
 refreshStatus();
+/* A short Hindi orientation is offered once, after the listener's first tap. */
+if (!localStorage.getItem('sheetal-guide-v1') && 'speechSynthesis' in window) {
+  document.addEventListener('pointerdown', () => {
+    localStorage.setItem('sheetal-guide-v1', '1');
+    const guide = new SpeechSynthesisUtterance('शीटल एफएम में आपका स्वागत है। प्ले बटन से रेडियो सुनिए, रिक्वेस्ट अ सॉन्ग से गाना मंगाइए, और कॉल द आर जे से हिंदी आर जे से बात कीजिए।');
+    guide.lang = 'hi-IN'; guide.rate = 0.95; window.speechSynthesis.cancel(); window.speechSynthesis.speak(guide);
+  }, {once:true, capture:true});
+}

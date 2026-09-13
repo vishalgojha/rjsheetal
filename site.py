@@ -15,6 +15,7 @@ radio.py architecture:
               GET /api/status, /api/queue
 """
 import base64
+import datetime
 import json
 import os
 import socket
@@ -38,6 +39,7 @@ STATION = os.environ.get("RJSHEETAL_STATION", "Sheetal FM")
 TAGLINE = os.environ.get("RJSHEETAL_TAGLINE", "Sheetal's live radio station")
 MAX_BUF = 512 * 1024
 READ_CHUNK = 32 * 1024
+LIVE_STALE_S = 10
 
 MAX_QUEUE = int(os.environ.get("RJSHEETAL_MAX_QUEUE", "8"))
 RATE_WINDOW_S = int(os.environ.get("RJSHEETAL_RATE_WINDOW", "600"))
@@ -86,14 +88,16 @@ class Buffer:
         self.total = 0       # absolute index of next byte to append
         self.listeners = 0
         self.uptime = time.time()
+        self.last_append = 0.0
 
     def on_air(self):
-        return self.total > 0
+        return self.total > 0 and time.time() - self.last_append < LIVE_STALE_S
 
     def append(self, chunk):
         with self.lock:
             self.data += chunk
             self.total += len(chunk)
+            self.last_append = time.time()
             while len(self.data) > MAX_BUF:
                 drop = len(self.data) - MAX_BUF
                 del self.data[:drop]
@@ -304,6 +308,11 @@ def rj_tool_call(message):
             break
     status = read_json(AUDIO_FILE, {})
     current = status.get("title") or "the live Sheetal FM show"
+    ist_now = datetime.datetime.now(datetime.timezone.utc).astimezone(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
+
+    if any(word in low for word in ("time", "समय", "कितने बजे", "बज रहे")):
+        return {"name": "get_time", "result": ist_now.strftime("%H:%M IST")}, \
+               f"अभी भारत में {ist_now.strftime('%-I:%M %p')} बजे हैं।"
 
     if any(word in low for word in ("queue", "queued", "coming up", "next songs")):
         items = [r for r in load_queue() if r.get("status") != "done"]

@@ -30,6 +30,7 @@ STATIC = os.path.join(HERE, "static")
 DATA_DIR = os.environ.get("RJSHEETAL_DATA") or HERE
 QUEUE_FILE = os.path.join(DATA_DIR, "requests.json")
 AUDIO_FILE = os.path.join(DATA_DIR, "audio.json")
+DEFAULT_SEEDED_FILE = os.path.join(DATA_DIR, "default-track-seeded")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
@@ -51,6 +52,7 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "7qBNUtXRGP0jPi0H4r8
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
+DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "spotify:track:3dcSec3fFteTR6QlQ194aI").strip()
 
 
 def log(msg):
@@ -261,6 +263,31 @@ def find_track(uri):
         }
     except Exception:
         return None
+
+
+def seed_default_track():
+    """Put the configured opening track into the queue once per data volume."""
+    if not DEFAULT_TRACK_URI or os.path.exists(DEFAULT_SEEDED_FILE) or not CREDS.get("cid"):
+        return
+    try:
+        track = find_track(DEFAULT_TRACK_URI)
+        if not track:
+            log("default track lookup failed")
+            return
+        with QUEUE_LOCK:
+            q = load_queue()
+            if not any(item.get("status") != "done" for item in q):
+                q.append({
+                    "id": "default-" + base64.b64encode(os.urandom(6)).decode().replace("+", "").replace("/", ""),
+                    "uri": track["uri"], "name": track["name"], "artist": track["artist"],
+                    "album": track["album"], "art": track["art"], "dur_ms": track["dur_ms"],
+                    "ts": int(time.time()), "status": "queued", "source": "station-default",
+                })
+                save_queue(q)
+        open(DEFAULT_SEEDED_FILE, "w", encoding="utf-8").close()
+        log(f"seeded default track: {track['name']} — {track['artist']}")
+    except Exception as e:
+        log(f"default track seed failed: {e!r}")
 
 
 # ---------------------------------------------------------------- RJ assistant
@@ -658,6 +685,7 @@ def main():
         log("WARNING: no SPOTIFY_CLIENT_ID/SECRET set — song requests disabled")
     os.makedirs(STATIC, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
+    seed_default_track()
     httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     log(f"rj.sheetal on 0.0.0.0:{PORT}  (token {'set' if SHARED_TOKEN else 'UNSET'})")
     try:

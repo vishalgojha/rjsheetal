@@ -44,7 +44,8 @@ listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
    |---|---|
    | `SPOTIFY_CLIENT_ID` | your Spotify app client id |
    | `SPOTIFY_CLIENT_SECRET` | your Spotify app client secret |
-   | `RJSHEETAL_TOKEN` | a long random shared secret (used by the home DJ) |
+| `RJSHEETAL_TOKEN` | a long random shared secret (used by the home DJ) |
+| `RJSHEETAL_DEFAULT_TRACK_URI` | optional opening track; defaults to `spotify:track:3dcSec3fFteTR6QlQ194aI` |
 4. **Storage → Add a volume**: mount `/data` (holds the request queue — survives restarts).
 5. **Domains → Add** advanced: `rj.vishalojha.me` and enable **HTTPS (Letsencrypt)**.
 6. Coolify auto-sets `PORT` — the app listens on whatever Coolify injects.

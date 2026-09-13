@@ -36,12 +36,37 @@ h1,h2,h3{color:#f4eadc}
 .search button{flex:none;padding:9px 11px;border:0;border-radius:3px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800;letter-spacing:.6px}
 .result button{color:#211d19;background:#e17a43}.progress-line{background:#51463b}.progress-line i{background:#e17a43}
 .tip{color:#c5b4a1;background:#171311}.rj-card{border-color:#47372e;background:#11100f}.rj-card .sub{color:var(--muted)}.rj-state{background:#080807}.orb{background:#302923}.orb.listening{background:#263022}.orb.listening i{background:#a7b388}.orb.speaking{background:#3b271e}.orb.speaking i{background:#c66a42}.voice-toggle,.wake-toggle{border-color:#47372e;color:#cbbba9;background:#171311}.voice-toggle.on{border-color:#b45b35;color:#f4eadc;background:#8f462b}.transcript{color:#c9b9a7;background:#080807}
-@media (min-width:700px){body{background:#000}.app{max-width:900px;padding:34px 54px;background:#000}.view.active{max-width:760px;margin:0 auto}.live-card{min-height:330px}.now-card{min-height:92px}.quick-grid{grid-template-columns:repeat(2,1fr)}.playlist-panel{max-width:760px;margin:0 auto}.view[data-view="player"] .player{max-width:620px;margin:0 auto}}.top-rj{padding:0 13px;height:38px;border:1px solid var(--line);border-radius:13px;color:#fff;background:#8f462b;font-size:11px;font-weight:800}.top-rj.on{border-color:#ff7652;animation:rjPulse 1.2s ease-in-out infinite}.view[data-view="rj"]{display:none!important}@keyframes rjPulse{50%{box-shadow:0 0 0 7px rgba(255,118,82,.14);transform:scale(1.03)}}
+@media (min-width:700px){body{background:#000}.app{max-width:1440px;padding:34px 64px;background:#000}.view.active{max-width:1280px;margin:0 auto}.live-card{min-height:330px}.now-card{min-height:92px}.quick-grid{grid-template-columns:repeat(2,1fr)}.playlist-panel{max-width:1280px;margin:0 auto}.view[data-view="player"] .player{max-width:620px;margin:0 auto}}.top-rj{padding:0 13px;height:38px;border:1px solid var(--line);border-radius:13px;color:#fff;background:#8f462b;font-size:11px;font-weight:800}.top-rj.on{border-color:#ff7652;animation:rjPulse 1.2s ease-in-out infinite}.view[data-view="rj"]{display:none!important}@keyframes rjPulse{50%{box-shadow:0 0 0 7px rgba(255,118,82,.14);transform:scale(1.03)}}
 </style><style>
   .live-card{min-height:0;padding:15px}.live-card .record-wrap{display:none}.live-card h2{margin-top:18px}
   #personalPlaylistPicker{display:none!important}
   .now-card .mini-play{display:none}.music-connection{display:flex;align-items:center;gap:10px;margin-top:10px}.music-connection .voice-toggle{flex:0 0 auto;padding:10px 12px}.music-connection small{color:var(--muted);font-size:10px;line-height:1.35}
   @media (min-width:700px){.live-card{min-height:0}.live-card .record-wrap{display:none}}
+</style>
+<style>
+  /* Give desktop screens a real workspace; keep the compact radio surface on phones. */
+  @media (min-width:980px) {
+    .view[data-view="home"] {
+      display:grid;
+      grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);
+      column-gap:32px;
+      align-items:start;
+    }
+    .view[data-view="home"] > .eyebrow,
+    .view[data-view="home"] > h1,
+    .view[data-view="home"] > .sub { grid-column:1 / -1; }
+    .view[data-view="home"] > .live-card { grid-column:1; min-height:390px; }
+    .view[data-view="home"] > .section-head:has(+ .now-card),
+    .view[data-view="home"] > .now-card,
+    .view[data-view="home"] > .music-connection,
+    .view[data-view="home"] > .device-handoff { grid-column:2; }
+    .view[data-view="home"] > .section-head:has(+ .quick-grid),
+    .view[data-view="home"] > .quick-grid { grid-column:1; }
+    .view[data-view="home"] > .quick-grid { align-self:start; }
+  }
+  @media (min-width:700px) {
+    .assistant-command,.assistant-actions { max-width:1280px !important; }
+  }
 </style></head>
 <body><main class="app"><header class="topbar"><div class="hello"><div class="avatar">S</div><div><small>Good evening</small><strong>Hi, Sheetal</strong></div></div><div class="top-actions"><button class="top-rj" id="topRj" type="button">ASK ASSISTANT</button><button class="icon-btn" id="installBtn" aria-label="Install Sheetal Assistant" hidden>＋</button><button class="icon-btn" id="muteBtn" aria-label="Mute or unmute"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4m12 0 4 4m0-4-4 4"/></svg></button></div></header>
 <section class="view active" data-view="home"><div class="eyebrow">PERSONAL SPACE</div><h1>Made for your moments.</h1><p class="sub">Tell your assistant what you need. Music is just one thing it can take care of.</p><article class="live-card"><div class="live-row"><span class="onair"><i></i><span id="airText">READY</span></span><span class="freq">SHEETAL · ASSISTANT</span></div><div class="record-wrap"><div class="record paused" id="recordHome"></div></div><h2 id="homeTitle">Ready when you are</h2><p class="song" id="homeArtist">Ask for music, planning, reminders, or help</p></article><div class="section-head"><h2>Now playing</h2></div><div class="now-card"><div class="cover" id="homeCover">♪</div><div class="track"><small>SPOTIFY</small><strong id="nowTitle">Connect Spotify to let the assistant play</strong><span id="nowArtist">Music will be controlled here</span></div><button class="mini-play" id="homePlay" aria-label="Play or pause"><svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button></div><div class="music-connection"><button class="voice-toggle" id="spotifyConnect" type="button">CONNECT SPOTIFY</button><small id="spotifyStatus">Connect Sheetal’s Spotify account once on this phone. The assistant will control music for her.</small></div><div class="device-handoff" id="deviceHandoff" hidden><div><strong>Playing on</strong><span id="deviceStatus">This device</span></div><button id="refreshDevices" type="button">REFRESH</button><select id="devicePicker" aria-label="Choose where music plays"><option value="">Choose a Spotify device…</option></select><small>Only one Spotify device can play at a time. On iPhone, tap Play after transferring.</small></div><div class="section-head"><h2>Quick actions</h2></div><div class="quick-grid"><button class="quick" data-assistant-focus="voice"><span>◉</span><strong>Talk to assistant</strong><small>Start a voice conversation</small></button><button class="quick" data-assistant-focus="text"><span>⌕</span><strong>Tell it what you need</strong><small>Type a request or music instruction</small></button></div></section>

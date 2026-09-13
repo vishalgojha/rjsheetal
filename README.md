@@ -43,7 +43,8 @@ listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
    | key | value |
    |---|---|
    | `SPOTIFY_CLIENT_ID` | your Spotify app client id |
-   | `SPOTIFY_CLIENT_SECRET` | your Spotify app client secret |
+| `SPOTIFY_CLIENT_SECRET` | your Spotify app client secret |
+| `SPOTIFY_PLAYLIST_ID` | Sheetal FM playlist; defaults to `2JXK0KRt8pLkmUqIPPmmQQ` |
 | `RJSHEETAL_TOKEN` | a long random shared secret (used by the home DJ) |
 | `RJSHEETAL_DEFAULT_TRACK_URI` | optional opening track; defaults to `spotify:track:3dcSec3fFteTR6QlQ194aI` |
 4. **Storage → Add a volume**: mount `/data` (holds the request queue — survives restarts).

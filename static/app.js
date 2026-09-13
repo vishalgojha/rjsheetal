@@ -57,6 +57,18 @@ async function requestSong(uri) {
   try { await getJSON('/api/request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({uri})}, 8000); toast('Added to Sheetal’s queue.'); $('query').value = ''; $('results').innerHTML = ''; }
   catch (error) { toast(error.name === 'AbortError' ? 'Radio temporarily unavailable.' : (error.message || 'Could not request that song.')); }
 }
+async function loadPlaylist() {
+  const button = $('playlistButton'), box = $('playlistResults');
+  if (button.dataset.loaded === '1') { box.hidden = !box.hidden; return; }
+  button.disabled = true; button.textContent = 'LOADING…'; box.hidden = false; box.innerHTML = '<div class="empty">Loading Sheetal’s playlist…</div>';
+  try {
+    const data = await getJSON('/api/playlist', {}, 10000);
+    box.innerHTML = (data.results || []).map(track => `<div class="result"><div class="cover">${track.art ? `<img src="${esc(track.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(track.name)}</strong><span>${esc(track.artist)}</span></div><button data-uri="${esc(track.uri)}">PLAY NEXT</button></div>`).join('') || '<div class="empty">No playlist tracks available.</div>';
+    box.querySelectorAll('button').forEach(item => item.addEventListener('click', () => requestSong(item.dataset.uri)));
+    button.dataset.loaded = '1'; button.textContent = 'HIDE TRACKS';
+  } catch (_) { box.innerHTML = '<div class="empty">Spotify playlist temporarily unavailable.</div>'; button.textContent = 'TRY AGAIN'; }
+  finally { button.disabled = false; }
+}
 let searchController;
 async function searchSongs() {
   const query = $('query').value.trim(), box = $('results');
@@ -83,5 +95,6 @@ $('homePlay').addEventListener('click', toggleAudio); $('playerPlay').addEventLi
 $('muteBtn').addEventListener('click', () => { audio.muted = !audio.muted; $('muteBtn').style.color = audio.muted ? 'var(--orange)' : ''; });
 audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('pause', () => setPlaying(false)); audio.addEventListener('error', () => { setPlaying(false); toast('Radio temporarily unavailable.'); });
 $('searchButton').addEventListener('click', searchSongs); $('query').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchSongs(); } });
+$('playlistButton').addEventListener('click', loadPlaylist); $('playlistResults').hidden = true;
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
 refreshStatus();

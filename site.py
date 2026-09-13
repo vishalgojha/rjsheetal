@@ -53,6 +53,7 @@ ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "spotify:track:3dcSec3fFteTR6QlQ194aI").strip()
+SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "2JXK0KRt8pLkmUqIPPmmQQ").strip()
 
 
 def log(msg):
@@ -225,7 +226,7 @@ def search_tracks(q, limit=6):
 
 
 def playlist_tracks(limit=20):
-    playlist_id = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip()
+    playlist_id = SPOTIFY_PLAYLIST_ID
     if not playlist_id:
         return []
     d = spotify_get(f"/playlists/{urllib.parse.quote(playlist_id, safe='')}/tracks?limit={limit}&market=IN")
@@ -487,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(502, {"results": [], "error": "Spotify search unavailable"})
         elif path == "/api/playlist":
             try:
-                self._json(200, {"configured": bool(os.environ.get("SPOTIFY_PLAYLIST_ID")), "results": playlist_tracks()})
+                self._json(200, {"configured": bool(SPOTIFY_PLAYLIST_ID), "results": playlist_tracks()})
             except Exception as e:
                 log(f"playlist error: {e!r}")
                 self._json(502, {"configured": True, "results": [], "error": "Spotify playlist unavailable"})

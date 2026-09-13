@@ -5,6 +5,12 @@
   const redirect=location.origin+'/', scope='streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private';
   let token=null, player=null, deviceId=null, loading=false;
   const setStatus=text=>{status.textContent=text};
+  const homeCard=document.querySelector('.now-card');
+  const homeProgress=document.createElement('div');
+  homeProgress.style.cssText='height:3px;margin:-5px 12px 0;border-radius:99px;overflow:hidden;background:rgba(198,106,66,.16)';
+  const homeProgressFill=document.createElement('i');
+  homeProgressFill.style.cssText='display:block;width:0;height:100%;border-radius:inherit;background:#c66a42;transition:width .25s linear';
+  homeProgress.append(homeProgressFill); homeCard?.after(homeProgress);
   const clock=ms=>{ms=Math.max(0,Math.floor(ms/1000));return Math.floor(ms/60)+':'+String(ms%60).padStart(2,'0')};
   const remember=event=>fetch('/api/memory/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event),keepalive:true}).catch(()=>{});
   async function config(){const r=await fetch('/api/spotify/config');if(!r.ok)throw Error('Spotify is not configured');return r.json()}
@@ -46,5 +52,5 @@
   prev.onclick=()=>player?.previousTrack();next.onclick=()=>player?.nextTrack();callback();
   // The personal browser player is the station source. Reflect its real state
   // in the badge instead of leaving the legacy server badge at OFF AIR.
-  setInterval(async()=>{if(!player)return;try{const state=await player.getCurrentState();const badge=document.getElementById('airText');if(badge)badge.textContent=state?.track_window?.current_track?(state.paused?'PAUSED':'LIVE'):'READY'}catch(_){ }},1000);
+  setInterval(async()=>{if(!player)return;try{const state=await player.getCurrentState();const badge=document.getElementById('airText');if(badge)badge.textContent=state?.track_window?.current_track?(state.paused?'PAUSED':'LIVE'):'READY';homeProgressFill.style.width=state?.duration?`${state.position/state.duration*100}%`:'0%'}catch(_){ }},1000);
 })();

@@ -15,6 +15,9 @@
   if (!voiceButton || !topButton) return;
 
   const AGENT_ID = 'agent_8401m2cyznemf10tav3hh90nqya1';
+  // ElevenLabs exposes output volume on a 0–1 scale. Keep the assistant at
+  // the loudest supported level without changing Spotify's player volume.
+  const AGENT_OUTPUT_VOLUME = 1;
   let session = null;
   let sessionKind = '';
   let loading = false;
@@ -194,6 +197,7 @@
           if (status) status.textContent = speaking ? 'Assistant is speaking.' : 'Listening.';
         },
       });
+      await session?.setVolume?.({ volume: AGENT_OUTPUT_VOLUME }).catch?.(() => {});
       return session;
     } catch (error) {
       loading = false;

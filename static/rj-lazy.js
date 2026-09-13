@@ -31,4 +31,11 @@
   // RJ webhook requests are written by the server, so refresh the visible
   // queue while a conversation is active instead of waiting for navigation.
   setInterval(() => { if(session) window.loadQueue?.(); }, 1200);
+  setInterval(() => {
+    if (!topButton) return;
+    const active = !!session || loading;
+    topButton.classList.toggle('on', active);
+    topButton.textContent = active ? 'STOP RJ' : 'TALK TO RJ';
+    topButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }, 200);
 })();

@@ -34,13 +34,26 @@
   async function commandAck(command,ok,error=''){
     fetch('/api/music/command-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command_id:command.id,client_id:clientId,ok,error}),keepalive:true}).catch(()=>{});
   }
+  async function playPlayback(){
+    const state=await player.getCurrentState();
+    if(state?.track_window?.current_track){if(state.paused)await player.resume();return}
+    await playDefault();
+  }
+  async function skipToNext(){
+    const currentUri=lastTrackUri;
+    if(!currentUri){await player.nextTrack();return}
+    const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri})});
+    const data=await r.json();
+    if(data.item?.uri){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[data.item.uri]})});window.loadQueue?.();return}
+    await player.nextTrack();
+  }
   async function executeMusicCommand(command){
     if(!command||command.target_client_id!==clientId||!player||!deviceId)return;
     try{
-      if(command.action==='play')await togglePlayback();
+      if(command.action==='play')await playPlayback();
       else if(command.action==='pause')await player.pause();
       else if(command.action==='toggle')await player.togglePlay();
-      else if(command.action==='next')await advanceQueue(lastTrackUri);
+      else if(command.action==='next')await skipToNext();
       else if(command.action==='previous')await player.previousTrack();
       else if(command.action==='queue_next')await advanceQueue(lastTrackUri);
       else if(command.action==='seek')await player.seek(Math.max(0,Number(command.position_ms)||0));

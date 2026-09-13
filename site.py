@@ -520,6 +520,15 @@ def agent_music_control(action, query="", playlist_id="", position_ms=0):
         action = "play_song"
     if action in ("playlist", "play list"):
         action = "play_playlist"
+    if action in ("resume", "start", "start music"):
+        action = "play"
+    if action in ("stop", "stop music"):
+        action = "pause"
+    if action in ("skip", "skip song", "next song"):
+        action = "next"
+    if action in ("replay", "repeat", "play again"):
+        action = "seek"
+        position_ms = 0
     payload = {"query": query, "playlist_id": playlist_id, "position_ms": position_ms}
     if action == "play_song":
         query = clean_text(query, 200)

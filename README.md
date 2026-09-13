@@ -62,7 +62,7 @@ never sent to a phone.
 1. Open the site in Chrome on Android or Safari on iPhone and use **Add to Home Screen**.
 2. Open the installed app, tap **Connect Spotify**, finish sign-in, then tap **Play**.
 3. Keep the app open while listening. iPhone may require another Play tap after a device transfer.
-4. Open **Listen with Sheetal** to see the active Spotify device and transfer playback.
+4. Use the **Playing on** control on the main screen to see the active Spotify device and transfer playback.
 5. If the microphone is denied or unreliable, use the typed assistant box; voice requires HTTPS and a fresh user tap.
 
 Spotify permits only one active playback device for the account. The web version

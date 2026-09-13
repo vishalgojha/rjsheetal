@@ -183,6 +183,11 @@ def record_memory(event):
     if kind in ("play", "skip", "replay") and track:
         bucket = memory.setdefault(kind + "s", {})
         bucket[track] = int(bucket.get(track, 0)) + 1
+        if kind == "play":
+            # Browser Spotify playback is the personal station source. Keep
+            # the RJ webhook aligned with the track the listener actually
+            # started, rather than the retired local AutoDJ metadata file.
+            write_json(AUDIO_FILE, {"title": track, "ts": int(time.time()), "personal": True})
     if kind == "request" and track:
         memory.setdefault("requests", []).append({"track": track, "ts": int(time.time())})
         memory["requests"] = memory["requests"][-50:]
@@ -558,7 +563,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"queue": load_queue()})
         elif path == "/api/agent/now-playing":
             st = read_json(AUDIO_FILE, {})
-            self._json(200, {"station": STATION, "now_playing": st.get("title", ""), "on_air": self.buf.on_air()})
+            self._json(200, {"station": STATION, "now_playing": st.get("title", ""), "on_air": bool(st.get("personal") or self.buf.on_air())})
         elif path == "/api/agent/queue":
             items = [r for r in load_queue() if r.get("status") != "done"]
             self._json(200, {"station": STATION, "queue": [

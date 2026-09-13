@@ -134,6 +134,8 @@ h1,h2,h3{color:#f4eadc}
   .bottom-nav { background:rgba(255,255,255,.82) !important; border-color:var(--line) !important; }
   .nav-item { color:#967b94; }
   .nav-item.active,.eyebrow,.section-head button { color:var(--orange) !important; }
+  .live-card { min-height:0 !important; }
+  .life-panel { width:100%; }
   @media (min-width:700px) {
     body { background-color:#f9b2d7 !important; }
     .app { width:calc(100% - 48px); max-width:1600px; padding:42px clamp(28px,5vw,88px) 58px; border-radius:36px; }
@@ -143,7 +145,11 @@ h1,h2,h3{color:#f4eadc}
   @media (min-width:980px) {
     .view[data-view="home"] { grid-template-columns:minmax(0,1.28fr) minmax(420px,.72fr); column-gap:40px; }
     .view[data-view="home"] > #emailPanel { grid-column:2; }
-    .view[data-view="home"] > .live-card { min-height:390px; }
+    .view[data-view="home"] > .live-card { min-height:220px !important; padding:26px; }
+    .life-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:22px; padding:22px; }
+    .life-head,.life-memory,.life-message { grid-column:1 / -1; }
+    .life-grid { margin-top:0; }
+    .life-notes { margin-top:0; }
   }
   @media (max-width:699px) {
     body { background-image:linear-gradient(135deg,rgba(249,178,215,.62),rgba(207,236,243,.68)),url('/assistant-bg.png') !important; }
@@ -200,7 +206,6 @@ h1,h2,h3{color:#f4eadc}
 <script>window.SHEETAL_PERSONAL_MODE=true;</script><script src="/app.js"></script>
 <script type="module" src="/rj-lazy.js"></script>
 <script src="/spotify-personal.js"></script>
-<script src="/assistant-life.js"></script>
 <script>
   document.title = 'Sheetal Assistant';
   document.querySelector('meta[name="description"]')?.setAttribute('content', 'Sheetal’s personal assistant with private Spotify music.');
@@ -253,6 +258,7 @@ h1,h2,h3{color:#f4eadc}
     assistantView.querySelector('.sub').textContent = 'Ask for help, planning, reflection, or music whenever you need it.';
   }
 </script>
+<script src="/assistant-life.js"></script>
 <script>
   (() => {
     const home = document.querySelector('.view[data-view="home"]');

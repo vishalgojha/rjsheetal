@@ -31,4 +31,7 @@
   document.getElementById('playlistButton').addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();loadPlaylist()},true);
   document.addEventListener('sheetal:play-uri',event=>{if(!deviceId)return setStatus('Connect Spotify on this device first.');api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[event.detail.uri]})}).then(()=>setStatus('Playing selected queue item.')).catch(e=>setStatus(e.message))});
   prev.onclick=()=>player?.previousTrack();next.onclick=()=>player?.nextTrack();callback();
+  // The personal browser player is the station source. Reflect its real state
+  // in the badge instead of leaving the legacy server badge at OFF AIR.
+  setInterval(async()=>{if(!player)return;try{const state=await player.getCurrentState();const badge=document.getElementById('airText');if(badge)badge.textContent=state?.track_window?.current_track?(state.paused?'PAUSED':'LIVE'):'READY'}catch(_){ }},1000);
 })();

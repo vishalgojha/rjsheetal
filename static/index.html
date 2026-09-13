@@ -12,6 +12,30 @@
 .app{padding-bottom:32px}.view{display:block}.view[data-view="player"]{display:none}.bottom-nav{display:none}
 .view[data-view="search"],.view[data-view="queue"],.view[data-view="rj"]{margin-top:28px;padding-top:28px;border-top:1px solid var(--line)}
 .view[data-view="search"] h1,.view[data-view="queue"] h1,.view[data-view="rj"] h1{font-size:22px}.result button{min-width:78px}
+
+/* Radio S / analog broadcast palette: cream paper, espresso panels, burnt orange signal. */
+:root{--paper:#f2ede4;--card:#2a2521;--ink:#f4eadc;--muted:#b7aa99;--line:#51463b;--orange:#d86d38;--green:#a7b388;--shadow:0 14px 30px rgba(35,25,18,.18)}
+html,body{background:#f2ede4;color:var(--ink)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.18;background:repeating-linear-gradient(0deg,rgba(70,48,30,.025) 0 1px,transparent 1px 4px);mix-blend-mode:multiply}
+.app{position:relative;background:#211d19;color:var(--ink);box-shadow:0 24px 70px rgba(38,27,20,.2)}
+.hello small,.sub,.track span,.track small,.live-card .song,.empty,.progress-meta,.tip,.rj-state small{color:var(--muted)}
+.avatar{color:#211d19;background:var(--orange);box-shadow:0 7px 16px rgba(216,109,56,.24)}
+.icon-btn{border-color:var(--line);color:#d8c8b6;background:#302923}
+.eyebrow,.section-head button,.nav-item.active{color:#e17a43}
+h1,h2,h3{color:#f4eadc}
+.live-card{border:1px solid #59483b;border-radius:3px;color:#f7ecdd;background:linear-gradient(145deg,#2d2722,#211d19 68%);box-shadow:0 18px 34px rgba(24,17,12,.32)}
+.live-card:after{border-color:rgba(216,109,56,.28);box-shadow:0 0 0 20px rgba(216,109,56,.07),0 0 0 42px rgba(216,109,56,.04)}
+.onair{border-radius:2px;background:rgba(216,109,56,.14);color:#e7d9c9}.onair i{background:#a7b388;box-shadow:0 0 0 4px rgba(167,179,136,.14)}.freq{color:#bda990}
+.record-wrap:before{background:rgba(216,109,56,.12)}
+.record{background:repeating-radial-gradient(circle,#161311 0 2px,#3b3028 3px 4px);box-shadow:0 12px 20px rgba(10,7,5,.42)}.record:before{background:linear-gradient(145deg,#f0d9bf,#d86d38)}
+.now-card,.quick,.search,.result,.queue-item{border-color:var(--line);background:#2a2521;box-shadow:var(--shadow)}
+.cover{background:linear-gradient(145deg,#49382d,#d86d38)}
+.mini-play,.round-play{color:#211d19;background:#e17a43;box-shadow:0 6px 14px rgba(216,109,56,.25)}
+.quick{color:var(--ink)}.quick span{color:#e17a43;background:#3a2e26}.quick small{color:var(--muted)}
+.search svg{stroke:#b7aa99}.search input{color:var(--ink)}.search input::placeholder{color:#928475}
+.result button{color:#211d19;background:#e17a43}.progress-line{background:#51463b}.progress-line i{background:#e17a43}
+.tip{color:#c5b4a1;background:#302720}.rj-card{border-color:#59483b;background:#2a2521}.rj-card .sub{color:var(--muted)}.rj-state{background:#211d19}.orb{background:#40372f}.orb.listening{background:#354033}.orb.listening i{background:#a7b388}.orb.speaking{background:#4a3024}.orb.speaking i{background:#e17a43}.voice-toggle,.wake-toggle{border-color:#59483b;color:#cbbba9;background:#302923}.voice-toggle.on{border-color:#e17a43;color:#211d19;background:#e17a43}.transcript{color:#c9b9a7;background:#211d19}
+@media (min-width:700px){body{background:#f2ede4}.app{background:#211d19}}
 </style></head>
 <body><main class="app"><header class="topbar"><div class="hello"><div class="avatar">S</div><div><small>Good evening</small><strong>Hi, Sheetal</strong></div></div><div class="top-actions"><button class="icon-btn" id="installBtn" aria-label="Install Sheetal FM" hidden>＋</button><button class="icon-btn" id="muteBtn" aria-label="Mute or unmute"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4m12 0 4 4m0-4-4 4"/></svg></button></div></header>
 <section class="view active" data-view="home"><div class="eyebrow">YOUR PERSONAL RADIO</div><h1>Made for your moments.</h1><p class="sub">A little music, a little magic, and Sheetal FM’s own RJ—always here when you call.</p><article class="live-card"><div class="live-row"><span class="onair"><i></i><span id="airText">OFF AIR</span></span><span class="freq">SHEETAL FM · LIVE</span></div><div class="record-wrap"><div class="record paused" id="recordHome"></div></div><h2 id="homeTitle">Sheetal FM</h2><p class="song" id="homeArtist">Your personal live radio station</p></article><div class="section-head"><h2>Now playing</h2><button data-nav="player">Open player</button></div><div class="now-card"><div class="cover" id="homeCover">♪</div><div class="track"><small>ON AIR NOW</small><strong id="nowTitle">Waiting for the show</strong><span id="nowArtist">Sheetal FM</span></div><button class="mini-play" id="homePlay" aria-label="Play or pause"><svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button></div><div class="section-head"><h2>Make it yours</h2></div><div class="quick-grid"><button class="quick" data-nav="search"><span>⌕</span><strong>Request a song</strong><small>Put your favorite on air</small></button><button class="quick" data-nav="rj"><span>◉</span><strong>Call the RJ</strong><small>Say “Hey Radio”</small></button></div></section>

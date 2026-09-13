@@ -54,7 +54,7 @@ function loadQueue() {
   }).catch(() => $('queue').innerHTML = '<div class="empty">Queue temporarily unavailable.</div>');
 }
 async function requestSong(uri) {
-  try { await getJSON('/api/request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({uri})}, 8000); toast('Added to Sheetal’s queue.'); $('query').value = ''; $('results').innerHTML = ''; }
+  try { await getJSON('/api/request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({uri})}, 8000); toast('Added to Sheetal’s queue.'); $('query').value = ''; $('results').innerHTML = ''; loadQueue(); }
   catch (error) { toast(error.name === 'AbortError' ? 'Radio temporarily unavailable.' : (error.message || 'Could not request that song.')); }
 }
 async function loadPlaylist() {
@@ -100,6 +100,7 @@ document.querySelectorAll('.quick[data-nav]').forEach(button => button.addEventL
     control?.focus({preventScroll:true});
   }, 350);
 }));
+document.querySelector('.quick[data-nav="rj"]')?.addEventListener('click', () => document.dispatchEvent(new Event('sheetal:call-rj')));
 $('homePlay').addEventListener('click', toggleAudio); $('playerPlay').addEventListener('click', toggleAudio);
 $('muteBtn').addEventListener('click', () => { audio.muted = !audio.muted; $('muteBtn').style.color = audio.muted ? 'var(--orange)' : ''; });
 audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('pause', () => setPlaying(false)); audio.addEventListener('error', () => { setPlaying(false); toast('Radio temporarily unavailable.'); });
@@ -107,6 +108,7 @@ $('searchButton').addEventListener('click', searchSongs); $('query').addEventLis
 $('playlistButton').addEventListener('click', loadPlaylist); $('playlistResults').hidden = true;
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
 refreshStatus();
+loadQueue();
 /* A short Hindi orientation is offered once, after the listener's first tap. */
 if (!localStorage.getItem('sheetal-guide-v1') && 'speechSynthesis' in window) {
   document.addEventListener('pointerdown', () => {

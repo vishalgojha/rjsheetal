@@ -20,5 +20,6 @@
     loading = false;
   }
   button.textContent='TALK TO RJ'; button.addEventListener('click', async () => { if(session){await session.endSession();session=null;} else await start(); });
+  document.addEventListener('sheetal:call-rj', () => { if(!session) start(); });
   wakeButton.addEventListener('click', () => { wake=!wake; wakeButton.textContent=wake?'WAKE: HEY RADIO':'DIRECT TALK'; wakeButton.classList.toggle('off',!wake); if(session)status.textContent=wake?'Wake mode · say “Hey Radio”.':'Direct talk mode enabled.'; });
 })();

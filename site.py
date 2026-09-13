@@ -624,6 +624,23 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 log(f"memory error: {e!r}")
                 self._json(500, {"error": "memory unavailable"})
+        elif path == "/api/rj/announcement":
+            if not ELEVENLABS_API_KEY:
+                self._json(503, {"error": "RJ announcements are not configured"})
+                return
+            text = str(body.get("text") or "")[:500]
+            if not text:
+                self._json(400, {"error": "announcement text required"})
+                return
+            try:
+                audio = elevenlabs_speak(text)
+                if not audio:
+                    self._json(503, {"error": "RJ announcements are not configured"})
+                    return
+                self._send(200, audio, "audio/mpeg", {"Cache-Control": "no-store"})
+            except Exception as e:
+                log(f"announcement error: {e!r}")
+                self._json(502, {"error": "RJ announcement unavailable"})
         elif path == "/api/agent/request-song":
             ok, msg = ok_request(self._client_ip())
             if not ok:

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+data/
+requests.json
+audio.json
+creds.py
+.env

@@ -464,11 +464,14 @@ class Handler(BaseHTTPRequestHandler):
             self.buf.stream_to(self.connection)
         elif path == "/api/status":
             st = read_json(AUDIO_FILE, {})
+            current_item = next((item for item in reversed(load_queue()) if item.get("status") == "claimed"), {})
             self._json(200, {
                 "station": STATION,
                 "tagline": TAGLINE,
                 "on_air": self.buf.on_air(),
-                "title": st.get("title", ""),
+                "title": st.get("title") or current_item.get("name", ""),
+                "artist": st.get("artist") or current_item.get("artist", ""),
+                "art": st.get("art") or current_item.get("art", ""),
                 "listeners": self.buf.listeners,
                 "uptime_s": int(time.time() - self.buf.uptime),
                 "queue_len": len(load_queue()),

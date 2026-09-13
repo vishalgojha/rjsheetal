@@ -24,17 +24,18 @@ function setPlaying(playing) {
   $('playerPlay').querySelector('.pause').style.display = playing ? 'block' : 'none';
   $('playerPlay').querySelector('.play-icon').style.display = playing ? 'none' : 'block';
 }
-function setMetadata(title, artist) {
+function setMetadata(title, artist, art) {
   title = title || 'Waiting for the show'; artist = artist || 'Sheetal FM';
   ['homeTitle','nowTitle','playerTitle'].forEach(id => $(id).textContent = title);
   $('homeArtist').textContent = artist; $('nowArtist').textContent = artist; $('playerArtist').textContent = artist;
+  document.querySelectorAll('#recordHome,#recordPlayer').forEach(node => { node.classList.toggle('has-art', !!art); node.style.backgroundImage = art ? `url("${art.replace(/"/g, '%22')}")` : ''; });
 }
 async function refreshStatus() {
   try {
     const data = await getJSON('/api/status', {}, 6000);
     $('airText').textContent = data.on_air ? 'LIVE' : 'OFF AIR';
     $('listenerLabel').textContent = `${data.listeners || 0} listening`;
-    if (data.title) setMetadata(data.title, 'Sheetal FM · Live Radio');
+    if (data.title) setMetadata(data.title, data.artist || 'Sheetal FM · Live Radio', data.art);
     $('progressFill').style.width = data.on_air ? '100%' : '0%';
   } catch (_) { $('airText').textContent = 'OFF AIR'; }
 }
@@ -76,7 +77,6 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.dataset.view === name));
   document.querySelectorAll('[data-nav]').forEach(button => button.classList.toggle('active', button.dataset.nav === name));
   if (name === 'queue') loadQueue();
-  if (name === 'rj' && $('voiceToggle') && $('voiceToggle').textContent === 'TALK TO RJ') setTimeout(() => $('voiceToggle').click(), 0);
 }
 document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showView(button.dataset.nav)));
 $('homePlay').addEventListener('click', toggleAudio); $('playerPlay').addEventListener('click', toggleAudio);

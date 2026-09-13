@@ -46,6 +46,11 @@ h1,h2,h3{color:#f4eadc}
 <section class="view" data-view="rj"><div class="rj-card"><div class="eyebrow">SHEETAL FM AI RJ</div><h1>Your station, your RJ.</h1><p class="sub">The RJ stays quiet during songs. Turn the call on, then say “Hey Radio” when you want to request a song or ask what’s playing.</p><div class="rj-state"><div class="orb" id="agentOrb"><i></i></div><div><strong id="agentTitle">Voice is off</strong><small id="agentDetail">The station keeps playing. Turn voice on when Sheetal wants the RJ.</small></div></div><div class="rj-buttons"><button class="voice-toggle" id="voiceToggle" type="button">TALK TO RJ</button><button class="wake-toggle" id="wakeToggle" type="button">WAKE: HEY RADIO</button></div><div class="transcript" id="rjStatus">Tap “TALK TO RJ” to enable the Hindi voice.</div></div></section></main>
 <nav class="bottom-nav" aria-label="Main navigation"><button class="nav-item active" data-nav="home"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><small>Home</small></button><button class="nav-item" data-nav="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><small>Search</small></button><button class="nav-item" data-nav="queue"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"/></svg><small>Queue</small></button><button class="nav-item" data-nav="rj"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 12h6M12 9v6"/></svg><small>RJ</small></button></nav><div id="toast"></div><audio id="audio" preload="none"></audio>
 <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
+<style>
+  .record.has-art { background-size: cover; background-position: center; background-repeat: no-repeat; }
+  .record.has-art::before, .record.has-art::after { display: none; }
+  .voice-toggle { min-height: 42px; }
+</style>
 <script src="/app.js"></script>
 <script type="module" src="/rj-lazy.js"></script>
 </body>

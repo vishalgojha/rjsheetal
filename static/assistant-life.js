@@ -16,7 +16,7 @@
     <div class="life-box life-notes"><div class="life-box-head"><strong>Notes</strong><button id="lifePlan" type="button">PLAN TODAY</button></div><div id="lifeNotes" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeNoteForm" class="life-note-form"><input id="lifeNoteTitle" placeholder="Note title…" aria-label="Note title"><textarea id="lifeNoteBody" rows="2" placeholder="Write something to remember…" aria-label="Note body"></textarea><button type="submit">SAVE NOTE</button></form></div>
     <div id="lifeMemory" class="life-memory"></div>
     <p id="lifeMessage" class="life-message" aria-live="polite"></p>`;
-  anchor.after(panel);
+  home.after(panel);
 
   const $ = id => document.getElementById(id);
   const message = text => { $('lifeMessage').textContent = text || ''; };

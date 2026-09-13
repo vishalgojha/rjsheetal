@@ -155,6 +155,53 @@ h1,h2,h3{color:#f4eadc}
     body { background-image:linear-gradient(135deg,rgba(249,178,215,.62),rgba(207,236,243,.68)),url('/assistant-bg.png') !important; }
     .app { background:rgba(255,255,255,.16) !important; }
   }
+</style>
+<style>
+  /* Final workspace pass: soft atmosphere, strong hierarchy, compact utilities. */
+  html, body { background:#f4eff5 !important; }
+  body {
+    background-image:linear-gradient(135deg,rgba(246,243,246,.91),rgba(222,241,244,.91)),url('/assistant-bg.png') !important;
+    background-size:cover;
+    background-position:center top;
+  }
+  .app {
+    background:rgba(255,255,255,.88) !important;
+    border:1px solid rgba(82,55,86,.12);
+    box-shadow:0 22px 70px rgba(76,58,79,.12);
+  }
+  .assistant-command {
+    border:1px solid rgba(82,55,86,.14) !important;
+    border-radius:22px !important;
+    background:rgba(255,255,255,.94) !important;
+    box-shadow:0 12px 30px rgba(76,58,79,.08) !important;
+  }
+  .assistant-command strong { font-size:20px !important; letter-spacing:-.3px; }
+  .assistant-form input { min-height:44px; }
+  .assistant-form button { min-height:44px; padding:0 18px; }
+  .assistant-actions { border-radius:18px !important; background:rgba(249,178,215,.24) !important; box-shadow:none !important; }
+  .live-card { min-height:0 !important; height:auto !important; border-radius:20px !important; padding:24px !important; }
+  .live-card h2 { margin-top:20px; font-size:24px; }
+  .now-card { border-radius:18px !important; }
+  .life-panel { margin-top:32px !important; border-radius:22px !important; padding:20px !important; background:rgba(255,255,255,.82) !important; }
+  .life-head { margin-bottom:14px; }
+  .life-box { min-height:0 !important; border-radius:16px !important; padding:16px !important; }
+  .life-notes { margin-top:0 !important; }
+  .life-form input,.life-note-form input,.life-note-form textarea { min-height:38px; }
+  @media (min-width:980px) {
+    .view[data-view="home"] { grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr) !important; column-gap:28px !important; }
+    .view[data-view="home"] > .live-card { min-height:190px !important; }
+    .view[data-view="home"] > .section-head:has(+ .now-card) { margin-top:0; }
+    .life-panel { display:grid; grid-template-columns:1fr 1fr 1.25fr; gap:14px; align-items:stretch; }
+    .life-head,.life-memory,.life-message { grid-column:1 / -1; }
+    .life-grid { display:contents; }
+    .life-notes { grid-column:auto; }
+    h1 { font-size:40px !important; }
+  }
+  @media (max-width:699px) {
+    body { background-image:linear-gradient(135deg,rgba(246,243,246,.88),rgba(222,241,244,.90)),url('/assistant-bg.png') !important; }
+    .app { background:rgba(255,255,255,.78) !important; border-radius:0; box-shadow:none; }
+    .assistant-command { border-radius:18px !important; }
+  }
 </style></head>
 <body><main class="app"><header class="topbar"><div class="hello"><div class="avatar">S</div><div><small>Good evening</small><strong>Hi, Sheetal</strong></div></div><div class="top-actions"><button class="top-rj" id="topRj" type="button">ASK ASSISTANT</button><button class="icon-btn" id="installBtn" aria-label="Install Sheetal Assistant" hidden>＋</button><button class="icon-btn" id="muteBtn" aria-label="Mute or unmute"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4m12 0 4 4m0-4-4 4"/></svg></button></div></header>
 <section class="view active" data-view="home"><div class="eyebrow">PERSONAL SPACE</div><h1>Made for your moments.</h1><p class="sub">Tell your assistant what you need. Music is just one thing it can take care of.</p><article class="live-card"><div class="live-row"><span class="onair"><i></i><span id="airText">READY</span></span><span class="freq">SHEETAL · ASSISTANT</span></div><div class="record-wrap"><div class="record paused" id="recordHome"></div></div><h2 id="homeTitle">Ready when you are</h2><p class="song" id="homeArtist">Ask for music, planning, reminders, or help</p></article><div class="section-head"><h2>Now playing</h2></div><div class="now-card"><div class="cover" id="homeCover">♪</div><div class="track"><small>SPOTIFY</small><strong id="nowTitle">Connect Spotify to let the assistant play</strong><span id="nowArtist">Music will be controlled here</span></div><button class="mini-play" id="homePlay" aria-label="Play or pause"><svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button></div><div class="music-connection"><button class="voice-toggle" id="spotifyConnect" type="button">CONNECT SPOTIFY</button><small id="spotifyStatus">Connect Sheetal’s Spotify account once on this phone. The assistant will control music for her.</small></div><div class="device-handoff" id="deviceHandoff" hidden><div><strong>Playing on</strong><span id="deviceStatus">This device</span></div><button id="refreshDevices" type="button">REFRESH</button><select id="devicePicker" aria-label="Choose where music plays"><option value="">Choose a Spotify device…</option></select><small>Only one Spotify device can play at a time. On iPhone, tap Play after transferring.</small></div><div class="section-head"><h2>Quick actions</h2></div><div class="quick-grid"><button class="quick" data-assistant-focus="voice"><span>◉</span><strong>Talk to assistant</strong><small>Start a voice conversation</small></button><button class="quick" data-assistant-focus="text"><span>⌕</span><strong>Tell it what you need</strong><small>Type a request or music instruction</small></button></div></section>

@@ -197,7 +197,11 @@
           if (status) status.textContent = speaking ? 'Assistant is speaking.' : 'Listening.';
         },
       });
-      await session?.setVolume?.({ volume: AGENT_OUTPUT_VOLUME }).catch?.(() => {});
+      if (typeof session?.setVolume === 'function') {
+        try {
+          await session.setVolume({ volume: AGENT_OUTPUT_VOLUME });
+        } catch (_) {}
+      }
       return session;
     } catch (error) {
       loading = false;

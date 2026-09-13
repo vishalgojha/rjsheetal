@@ -74,7 +74,23 @@ async function loadPlaylist() {
   } catch (_) { box.innerHTML = '<div class="empty">Spotify playlist temporarily unavailable.</div>'; button.textContent = 'TRY AGAIN'; }
   finally { button.disabled = false; }
 }
-let searchController;
+// Search and playlist cards originally exposed only PLAY NEXT. Add the
+// immediate-play action consistently without duplicating their render logic.
+function addPlayNowActions(root) {
+  root.querySelectorAll('.result').forEach(card => {
+    const nextButton = card.querySelector('button[data-uri]');
+    if (!nextButton || card.querySelector('[data-play-now]')) return;
+    const nowButton = nextButton.cloneNode(true);
+    nowButton.textContent = 'PLAY NOW'; nowButton.dataset.playNow = '1';
+    nowButton.addEventListener('click', event => {
+      event.preventDefault(); event.stopPropagation();
+      document.dispatchEvent(new CustomEvent('sheetal:play-uri', {detail:{uri:nowButton.dataset.uri}}));
+    });
+    nextButton.parentNode.insertBefore(nowButton, nextButton);
+  });
+}
+new MutationObserver(() => addPlayNowActions($('results'))).observe($('results'), {childList:true, subtree:true});
+new MutationObserver(() => addPlayNowActions($('playlistResults'))).observe($('playlistResults'), {childList:true, subtree:true});
 async function searchSongs() {
   const query = $('query').value.trim(), box = $('results');
   if (query.length < 2) { box.innerHTML = '<div class="empty">Type at least two characters to search Spotify.</div>'; return; }

@@ -7,10 +7,13 @@
   const setStatus=text=>{status.textContent=text};
   const homeCard=document.querySelector('.now-card');
   const homeProgress=document.createElement('div');
-  homeProgress.style.cssText='height:3px;margin:-5px 12px 0;border-radius:99px;overflow:hidden;background:rgba(198,106,66,.16)';
+  homeProgress.style.cssText='height:7px;margin:-5px 12px 0;border-radius:99px;overflow:hidden;background:rgba(198,106,66,.16);cursor:pointer;touch-action:none';
   const homeProgressFill=document.createElement('i');
   homeProgressFill.style.cssText='display:block;width:0;height:100%;border-radius:inherit;background:#c66a42;transition:width .25s linear';
   homeProgress.append(homeProgressFill); homeCard?.after(homeProgress);
+  async function seekFromPointer(event, bar){if(!player)return;const rect=bar.getBoundingClientRect(),ratio=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width));try{const state=await player.getCurrentState();if(state?.duration)await player.seek(Math.round(state.duration*ratio))}catch(_){}}
+  function bindSeek(bar){if(!bar)return;bar.addEventListener('pointerdown',event=>{event.preventDefault();bar.setPointerCapture?.(event.pointerId);seekFromPointer(event,bar)});bar.addEventListener('pointermove',event=>{if(event.buttons)seekFromPointer(event,bar)})}
+  bindSeek(homeProgress); bindSeek(document.querySelector('.progress-line'));
   const clock=ms=>{ms=Math.max(0,Math.floor(ms/1000));return Math.floor(ms/60)+':'+String(ms%60).padStart(2,'0')};
   const remember=event=>fetch('/api/memory/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event),keepalive:true}).catch(()=>{});
   async function config(){const r=await fetch('/api/spotify/config');if(!r.ok)throw Error('Spotify is not configured');return r.json()}

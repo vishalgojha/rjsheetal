@@ -461,6 +461,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("app.js", "application/javascript; charset=utf-8")
         elif path == "/rj-lazy.js":
             self._serve_file("rj-lazy.js", "application/javascript; charset=utf-8")
+        elif path == "/spotify-personal.js":
+            self._serve_file("spotify-personal.js", "application/javascript; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":
@@ -486,6 +488,8 @@ class Handler(BaseHTTPRequestHandler):
                 "uptime_s": int(time.time() - self.buf.uptime),
                 "queue_len": len(load_queue()),
             })
+        elif path == "/api/spotify/config":
+            self._json(200, {"client_id": CREDS.get("cid", ""), "playlist_id": SPOTIFY_PLAYLIST_ID})
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
             try:

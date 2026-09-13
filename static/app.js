@@ -112,7 +112,7 @@ audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('
 $('searchButton').addEventListener('click', searchSongs); $('query').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchSongs(); } });
 $('playlistButton').addEventListener('click', loadPlaylist); $('playlistResults').hidden = true;
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
-if (window.SHEETAL_PERSONAL_MODE) $('airText').textContent = 'READY';
+if (window.SHEETAL_PERSONAL_MODE) { $('airText').textContent = 'READY'; setMetadata('Connect Spotify to start', 'Choose a playlist or press play', ''); }
 if (!window.SHEETAL_PERSONAL_MODE) refreshStatus();
 loadQueue();
 /* A short Hindi orientation is offered once, after the listener's first tap. */

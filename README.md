@@ -20,7 +20,7 @@ Create a public-repository application from this repository and set:
 | `COMPOSIO_API_KEY` | Composio project API key for the managed Gmail connection |
 | `COMPOSIO_USER_ID` | Stable Composio user id; use `sheetal` |
 | `COMPOSIO_CALLBACK_URL` | `https://rj.vishalojha.me/api/email/callback` |
-| `RJSHEETAL_PRIVATE_CODE` | Private owner code required before Gmail access |
+| `RJSHEETAL_PRIVATE_CODE` | Optional starter PIN; defaults to `0000000` and can be changed in the app |
 | `RJSHEETAL_AGENT_TOKEN` | Optional secret for a protected ElevenLabs Gmail tool |
 
 Add a persistent Coolify volume mounted at `/data`. This stores Sheetal’s
@@ -44,11 +44,11 @@ browser uses PKCE, so the Spotify client secret never reaches the phone.
 Gmail is an optional, read-only personal assistant capability. Create a
 Composio project/API key, enable the Gmail toolkit, and set the Composio
 variables above in Coolify. The callback URL must be exactly
-`https://rj.vishalojha.me/api/email/callback`. On her phone, Sheetal enters the
-private assistant code once, taps **Connect Gmail**, and completes the hosted
-Google consent flow. Composio stores and refreshes the provider connection;
-this app stores only the Composio session id in the persistent `/data` volume,
-so she does not repeat setup on every device.
+`https://rj.vishalojha.me/api/email/callback`. On her phone, Sheetal starts
+with the temporary PIN `0000000`, taps **Connect Gmail**, and completes the
+hosted Google consent flow. After unlocking, she can tap **Change private PIN**
+to choose her own 4–12 digit PIN. The changed PIN is persisted in `/data` and
+survives redeployments.
 
 The app creates a restricted Composio session with the read-only
 `GMAIL_FETCH_EMAILS` tool. No Google client secret is needed in Coolify.

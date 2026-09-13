@@ -83,6 +83,7 @@ h1,h2,h3{color:#f4eadc}
   .email-panel{margin:0 0 20px;padding:14px;border:1px solid #47372e;border-radius:18px;background:#11100f}
   .email-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.email-head h2{margin-top:3px;font-size:17px}.email-head button{border:0;color:var(--orange);background:transparent;font-size:10px;font-weight:800}
   .email-context{margin:7px 0 0;color:var(--muted);font-size:10px;line-height:1.4}.email-badge{flex:none;padding:5px 7px;border-radius:7px;color:#d9c9b8;background:#2a201b;font-size:9px;font-weight:800;letter-spacing:.06em}.email-badge.connected{color:#d9e4bf;background:#273020}.email-badge.locked{color:#e6c69f;background:#30251d}
+  .email-link{display:block;margin:9px auto 0;padding:0;border:0;color:var(--orange);background:transparent;font-size:9px;font-weight:800;letter-spacing:.04em}.email-link[hidden]{display:none}.email-unlock,.email-pin-change{display:flex;gap:7px;margin-top:9px}.email-unlock[hidden],.email-pin-change[hidden]{display:none}.email-pin-change input{min-width:0;flex:1;padding:9px;border:1px solid #47372e;border-radius:9px;color:var(--ink);background:#080807;font-size:12px}.email-pin-change button{padding:0 10px;border:0;border-radius:9px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}
   .email-connection{display:flex;align-items:center;gap:9px;min-width:0;margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#080807}.email-app-icon{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:8px;color:#f4eadc;background:#8f462b;font-size:15px}.email-connection-copy{min-width:0;flex:1}.email-connection-copy strong,.email-connection-copy small{display:block;overflow:hidden;text-overflow:ellipsis}.email-connection-copy strong{font-size:11px}.email-connection-copy small{margin-top:3px;color:var(--muted);font-size:9px;line-height:1.35;white-space:normal}.email-connection-state{flex:none;color:var(--muted);font-size:9px;font-weight:800;text-align:right}.email-capabilities{margin:9px 0 0;color:#cbbba9;font-size:9px;line-height:1.4}
   .email-status{margin-top:6px;color:var(--muted);font-size:11px;line-height:1.4}.email-actions{display:flex;gap:7px;margin-top:11px}.email-actions button{flex:1;min-height:36px;border:1px solid #47372e;border-radius:10px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}.email-actions button.secondary{color:#cbbba9;background:#171311}.email-actions button:disabled{opacity:.55}
   .email-unlock{display:flex;gap:7px;margin-top:9px}.email-unlock[hidden]{display:none}.email-unlock input{min-width:0;flex:1;padding:9px;border:1px solid #47372e;border-radius:9px;color:var(--ink);background:#080807;font-size:12px}.email-unlock button{padding:0 10px;border:0;border-radius:9px;color:#f4eadc;background:#8f462b;font-size:10px;font-weight:800}
@@ -133,6 +134,7 @@ h1,h2,h3{color:#f4eadc}
     const live = home?.querySelector('.live-card');
     if (!live || document.getElementById('emailPanel')) return;
     live.insertAdjacentHTML('beforebegin', `<section class="email-panel" id="emailPanel" aria-label="Connected apps"><div class="email-head"><div><div class="eyebrow">CONNECTED APPS · COMPOSIO</div><h2>Connect the help she wants.</h2><p class="email-context">Composio securely connects Sheetal’s apps to her assistant. Gmail access is read-only.</p></div><span class="email-badge" id="emailBadge">CHECKING</span></div><div class="email-connection"><span class="email-app-icon" aria-hidden="true">✉</span><div class="email-connection-copy"><strong>Gmail</strong><small>Find important messages and prepare a simple daily brief.</small></div><span class="email-connection-state" id="emailConnectionState">Checking…</span></div><p class="email-capabilities">Can read and search email · cannot send, delete, or change anything.</p><p class="email-status" id="emailStatus">Checking your Gmail connection…</p><div class="email-actions"><button id="emailConnect" type="button">CONNECT GMAIL</button><button id="emailInbox" class="secondary" type="button">CHECK INBOX</button></div><div class="email-unlock" id="emailUnlock" hidden><input id="emailCode" type="password" autocomplete="current-password" placeholder="Private assistant code" aria-label="Private assistant code"><button id="emailUnlockButton" type="button">UNLOCK</button></div><form class="email-search" id="emailSearch" hidden><input id="emailQuery" placeholder="Search email, e.g. is:unread" aria-label="Search email"><button type="submit">SEARCH</button></form><div class="email-list" id="emailList"></div><p class="email-message" id="emailMessage" aria-live="polite"></p></section>`);
+    document.getElementById('emailPanel').querySelector('.email-actions').insertAdjacentHTML('afterend', '<button class="email-link" id="emailChangePin" type="button" hidden>CHANGE PRIVATE PIN</button><div class="email-pin-change" id="emailPinChange" hidden><input id="emailNewPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="New PIN (4–12 digits)" aria-label="New private assistant PIN"><button id="emailChangePinButton" type="button">SAVE PIN</button></div>');
     const $e = id => document.getElementById(id);
     const escEmail = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let current = null;
@@ -145,6 +147,7 @@ h1,h2,h3{color:#f4eadc}
     function message(text) { $e('emailMessage').textContent = text || ''; }
     function showUnlock(show) { $e('emailUnlock').hidden = !show; if (show) $e('emailCode').focus(); }
     function setConnectionState(badge, state, className = '') { $e('emailBadge').textContent = badge; $e('emailBadge').className = 'email-badge' + (className ? ' ' + className : ''); $e('emailConnectionState').textContent = state; }
+    function showPinChange(show) { $e('emailPinChange').hidden = !show; if (show) $e('emailNewPin').focus(); }
     function renderMessages(messages) {
       $e('emailList').innerHTML = (messages || []).map(item => `<article class="email-item"><strong>${escEmail(item.subject)}</strong><span>${escEmail(item.from)}${item.unread ? ' · UNREAD' : ''}</span><small>${escEmail(item.snippet)}</small></article>`).join('');
     }
@@ -154,22 +157,22 @@ h1,h2,h3{color:#f4eadc}
       const inbox = $e('emailInbox');
       if (data.setup_required) {
         setConnectionState('SETUP NEEDED', 'Needs setup');
-        $e('emailStatus').textContent = 'The assistant needs its Composio key and private access code before Gmail can be connected.';
-        connect.textContent = 'SET UP GMAIL'; connect.disabled = true; inbox.disabled = true; $e('emailSearch').hidden = true; showUnlock(false); return;
+        $e('emailStatus').textContent = 'The assistant needs its Composio key before Gmail can be connected.';
+        connect.textContent = 'SET UP GMAIL'; connect.disabled = true; inbox.disabled = true; $e('emailSearch').hidden = true; $e('emailChangePin').hidden = true; showUnlock(false); showPinChange(false); return;
       }
       if (!data.authorized) {
         setConnectionState('LOCKED', 'Private code', 'locked');
-        $e('emailStatus').textContent = 'Private access is locked on this phone.';
-        connect.textContent = 'UNLOCK FIRST'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; showUnlock(false); return;
+        $e('emailStatus').textContent = 'Enter the temporary PIN 0000000 to get started. Change it after unlocking.';
+        connect.textContent = 'UNLOCK FIRST'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; $e('emailChangePin').hidden = true; showUnlock(false); showPinChange(false); return;
       }
       if (!data.connected) {
         setConnectionState('READY', 'Not connected');
         $e('emailStatus').textContent = 'Connect Sheetal’s Gmail once; the assistant can then help sort and find messages.';
-        connect.textContent = 'CONNECT GMAIL'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; return;
+        connect.textContent = 'CONNECT GMAIL'; connect.disabled = false; inbox.disabled = true; $e('emailSearch').hidden = true; $e('emailChangePin').hidden = false; return;
       }
       setConnectionState('CONNECTED', 'Connected', 'connected');
       $e('emailStatus').textContent = `Connected${data.email ? ` · ${data.email}` : ''}. Read-only inbox access is on.`;
-      connect.textContent = 'RECONNECT'; connect.disabled = false; inbox.disabled = false; $e('emailSearch').hidden = false;
+      connect.textContent = 'RECONNECT'; connect.disabled = false; inbox.disabled = false; $e('emailSearch').hidden = false; $e('emailChangePin').hidden = false;
     }
     async function refreshStatus() { try { renderStatus(await emailJSON('/api/email/status')); } catch (_) { $e('emailStatus').textContent = 'Email status is temporarily unavailable.'; } }
     async function loadInbox(query = '') {
@@ -182,8 +185,10 @@ h1,h2,h3{color:#f4eadc}
     }
     $e('emailRefresh').addEventListener('click', refreshStatus);
     $e('emailConnect').addEventListener('click', () => { if (!current?.authorized) return showUnlock(true); if (current?.connected || !current?.setup_required) window.location.href = '/api/email/connect'; });
+    $e('emailChangePin').addEventListener('click', () => showPinChange(!$e('emailPinChange').hidden));
     $e('emailInbox').addEventListener('click', () => loadInbox());
-    $e('emailUnlockButton').addEventListener('click', async () => { const code = $e('emailCode').value.trim(); if (!code) return message('Enter the private assistant code.'); try { await emailJSON('/api/email/unlock', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}); $e('emailCode').value = ''; showUnlock(false); message('Unlocked on this phone.'); await refreshStatus(); } catch (error) { message(error.message); } });
+    $e('emailUnlockButton').addEventListener('click', async () => { const code = $e('emailCode').value.trim(); if (!code) return message('Enter the PIN.'); try { await emailJSON('/api/email/unlock', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}); $e('emailCode').value = ''; showUnlock(false); message('Unlocked on this phone. You can now connect Gmail or change the PIN.'); await refreshStatus(); } catch (error) { message(error.message); } });
+    $e('emailChangePinButton').addEventListener('click', async () => { const pin = $e('emailNewPin').value.trim(); if (!pin) return message('Enter a new PIN.'); try { await emailJSON('/api/email/change-pin', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})}); $e('emailNewPin').value = ''; showPinChange(false); message('Private PIN changed and saved.'); } catch (error) { message(error.message); } });
     $e('emailSearch').addEventListener('submit', event => { event.preventDefault(); loadInbox($e('emailQuery').value.trim()); });
     refreshStatus();
   })();

@@ -43,6 +43,7 @@ PLANS_FILE = os.path.join(DATA_DIR, "plans.json")
 MUSIC_COMMAND_FILE = os.path.join(DATA_DIR, "music-command.json")
 MUSIC_STATE_FILE = os.path.join(DATA_DIR, "music-state.json")
 COMPOSIO_SESSION_FILE = os.path.join(DATA_DIR, "composio-session.json")
+PRIVATE_CODE_FILE = os.path.join(DATA_DIR, "assistant-pin.json")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
@@ -72,6 +73,7 @@ COMPOSIO_CALLBACK_URL = os.environ.get("COMPOSIO_CALLBACK_URL", "").strip()
 # Email is deliberately disabled until the public app has an owner-only gate.
 # Set this to a private passphrase in Coolify; never put it in the frontend.
 RJSHEETAL_PRIVATE_CODE = os.environ.get("RJSHEETAL_PRIVATE_CODE", "").strip()
+DEFAULT_PRIVATE_CODE = "0000000"
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "").strip()
 SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip() or "2JXK0KRt8pLkmUqIPPmmQQ"
@@ -566,11 +568,30 @@ class ComposioNotConnected(RuntimeError):
 
 
 def email_configured():
-    return bool(COMPOSIO_API_KEY and RJSHEETAL_PRIVATE_CODE)
+    return bool(COMPOSIO_API_KEY and current_private_code())
+
+
+def current_private_code():
+    stored = read_json(PRIVATE_CODE_FILE, {})
+    if isinstance(stored, dict):
+        code = str(stored.get("code") or "").strip()
+        if code:
+            return code
+    return RJSHEETAL_PRIVATE_CODE or DEFAULT_PRIVATE_CODE
+
+
+def save_private_code(code):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    write_json(PRIVATE_CODE_FILE, {"code": code, "updated_at": timestamp()})
+    try:
+        os.chmod(PRIVATE_CODE_FILE, 0o600)
+    except OSError:
+        pass
 
 
 def email_cookie_value():
-    return hashlib.sha256(RJSHEETAL_PRIVATE_CODE.encode("utf-8")).hexdigest() if RJSHEETAL_PRIVATE_CODE else ""
+    code = current_private_code()
+    return hashlib.sha256(code.encode("utf-8")).hexdigest() if code else ""
 
 
 def request_cookie(handler, name):
@@ -674,9 +695,6 @@ def connected_gmail_accounts(session):
 def email_status(handler):
     if not COMPOSIO_API_KEY:
         return {"configured": False, "authorized": email_authorized(handler), "connected": False,
-                "email": "", "setup_required": True, "provider": "composio"}
-    if not RJSHEETAL_PRIVATE_CODE:
-        return {"configured": True, "authorized": False, "connected": False,
                 "email": "", "setup_required": True, "provider": "composio"}
     authorized = email_authorized(handler)
     if not authorized:
@@ -1279,13 +1297,26 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True})
         elif path == "/api/email/unlock":
             supplied = str(body.get("code") or "").strip()
-            if not RJSHEETAL_PRIVATE_CODE:
+            expected = current_private_code()
+            if not expected:
                 self._json(503, {"ok": False, "error": "private assistant access is not configured"})
                 return
-            if not supplied or not secrets.compare_digest(supplied, RJSHEETAL_PRIVATE_CODE):
+            if not supplied or not secrets.compare_digest(supplied, expected):
                 self._json(403, {"ok": False, "error": "that access code is not correct"})
                 return
             self._send(200, json.dumps({"ok": True}), extra={
+                "Set-Cookie": f"{EMAIL_COOKIE}={email_cookie_value()}; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax",
+            })
+        elif path == "/api/email/change-pin":
+            if not email_authorized(self):
+                self._json(403, {"ok": False, "error": "unlock the personal assistant first"})
+                return
+            new_pin = str(body.get("pin") or body.get("code") or "").strip()
+            if not new_pin.isdigit() or not 4 <= len(new_pin) <= 12:
+                self._json(400, {"ok": False, "error": "PIN must contain 4 to 12 digits"})
+                return
+            save_private_code(new_pin)
+            self._send(200, json.dumps({"ok": True, "message": "Private PIN changed"}), extra={
                 "Set-Cookie": f"{EMAIL_COOKIE}={email_cookie_value()}; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax",
             })
         elif path == "/api/email/disconnect":

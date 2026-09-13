@@ -3,7 +3,7 @@
   const connect=document.getElementById('spotifyConnect'), play=document.getElementById('playerPlay'), prev=document.getElementById('prevTrack'), next=document.getElementById('nextTrack'), status=document.getElementById('spotifyStatus'), deviceHandoff=document.getElementById('deviceHandoff'), deviceStatus=document.getElementById('deviceStatus'), devicePicker=document.getElementById('devicePicker'), refreshDevices=document.getElementById('refreshDevices');
   if(!connect)return;
   const redirect=location.origin+'/', scope='streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state playlist-read-private';
-  let token=null, player=null, deviceId=null, loading=false, devicesTimer=null, lastState=null;
+  let token=null, player=null, deviceId=null, externalDevice=false, loading=false, devicesTimer=null, lastState=null;
   const clientId=localStorage.getItem('sheetal-music-client-id')||('music-'+randomId());
   localStorage.setItem('sheetal-music-client-id',clientId);
   let lastCommandId='', commandTimer=null, stateReportAt=0, stateReportPromise=null;
@@ -35,28 +35,29 @@
     fetch('/api/music/command-result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command_id:command.id,client_id:clientId,ok,error}),keepalive:true}).catch(()=>{});
   }
   async function playPlayback(){
+    if(!player||externalDevice){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT'});return}
     const state=await player.getCurrentState();
     if(state?.track_window?.current_track){if(state.paused)await player.resume();return}
     await playDefault();
   }
   async function skipToNext(){
     const currentUri=lastTrackUri;
-    if(!currentUri){await player.nextTrack();return}
+    if(!currentUri){if(player&&!externalDevice)await player.nextTrack();else await api('/me/player/next?device_id='+encodeURIComponent(deviceId),{method:'POST'});return}
     const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri})});
     const data=await r.json();
     if(data.item?.uri){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[data.item.uri]})});window.loadQueue?.();return}
-    await player.nextTrack();
+    if(player&&!externalDevice)await player.nextTrack();else await api('/me/player/next?device_id='+encodeURIComponent(deviceId),{method:'POST'});
   }
   async function executeMusicCommand(command){
-    if(!command||command.target_client_id!==clientId||!player||!deviceId)return;
+    if(!command||command.target_client_id!==clientId||(!player&&!deviceId))return;
     try{
       if(command.action==='play')await playPlayback();
-      else if(command.action==='pause')await player.pause();
-      else if(command.action==='toggle')await player.togglePlay();
+      else if(command.action==='pause'){if(player&&!externalDevice)await player.pause();else await api('/me/player/pause?device_id='+encodeURIComponent(deviceId),{method:'PUT'});}
+      else if(command.action==='toggle'){if(player&&!externalDevice)await player.togglePlay();else{const state=await api('/me/player');await api('/me/player/'+(state?.is_playing?'pause':'play')+'?device_id='+encodeURIComponent(deviceId),{method:'PUT'});}}
       else if(command.action==='next')await skipToNext();
-      else if(command.action==='previous')await player.previousTrack();
+      else if(command.action==='previous'){if(player&&!externalDevice)await player.previousTrack();else await api('/me/player/previous?device_id='+encodeURIComponent(deviceId),{method:'POST'});}
       else if(command.action==='queue_next')await advanceQueue(lastTrackUri);
-      else if(command.action==='seek')await player.seek(Math.max(0,Number(command.position_ms)||0));
+      else if(command.action==='seek'){if(player&&!externalDevice)await player.seek(Math.max(0,Number(command.position_ms)||0));else await api('/me/player/seek?position_ms='+Math.max(0,Number(command.position_ms)||0)+'&device_id='+encodeURIComponent(deviceId),{method:'PUT'});}
       else if(command.action==='play_song')await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[command.query]})});
       else if(command.action==='play_playlist')await playPlaylist(command.playlist_id);
       await commandAck(command,true);
@@ -64,7 +65,7 @@
     }catch(error){await commandAck(command,false,error.message||'Music command failed');setStatus(error.message||'The assistant could not control music.');}
   }
   async function pollMusicCommands(){
-    if(!player||!deviceId)return;
+    if(!deviceId)return;
     try{const r=await fetch('/api/music/command?client_id='+encodeURIComponent(clientId)+'&after='+encodeURIComponent(lastCommandId),{cache:'no-store'});if(!r.ok)return;const data=await r.json();if(data.command){lastCommandId=data.command.id;await executeMusicCommand(data.command)}}catch(_){}
   }
   const remember=event=>fetch('/api/memory/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(event),keepalive:true}).catch(()=>{});
@@ -105,7 +106,7 @@
   async function stationLink(track){if(!autoRj()||announced||!track)return;announced=true;try{await player.pause();const text=`अभी आपने सुना ${track.name}, ${track.artists.map(a=>a.name).join(', ')}। शीटल के साथ संगीत यूँ ही चलता रहे।`;const r=await fetch('/api/rj/announcement',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});if(!r.ok)throw Error('RJ link unavailable');announcementAudio=new Audio(URL.createObjectURL(await r.blob()));announcementAudio.onended=async()=>{URL.revokeObjectURL(announcementAudio.src);announcementAudio=null;announced=false;await player.resume()};await announcementAudio.play()}catch(e){announced=false;setStatus(e.message||'RJ link unavailable.');try{await player.resume()}catch(_) {}}}
   async function advanceQueue(currentUri){if(advancing||!currentUri||endedUri===currentUri)return;endedUri=currentUri;advancing=true;try{const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri})}),d=await r.json();if(d.item?.uri&&deviceId){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[d.item.uri]})});setStatus('Now playing the next request.');window.loadQueue?.()}else if(deviceId){setStatus('Spotify is continuing the selected playlist.')}}catch(e){endedUri='';setStatus('Queue could not advance.')}finally{advancing=false}}
   async function refreshDeviceList(){
-    if(!player||!devicePicker)return;
+    if(!devicePicker)return;
     try{
       const data=await api('/me/player/devices');
       const devices=(data.devices||[]).filter(d=>d.id&&!d.is_restricted);
@@ -113,16 +114,20 @@
       devicePicker.innerHTML='<option value="">Choose a Spotify device…</option>'+devices.map(d=>`<option value="${esc(d.id)}">${esc(deviceName(d))}${d.id===deviceId?' · this browser':''}${d.is_active?' · active':''}</option>`).join('');
       if(devices.some(d=>d.id===previous))devicePicker.value=previous;
       const active=devices.find(d=>d.is_active);
-      showDevice(active?deviceName(active):'No active device');
-    }catch(_){setStatus('Could not refresh Spotify devices.');}
+      if(!player&&active){deviceId=active.id;externalDevice=true;}
+      showDevice(active?deviceName(active):'No active device — open Spotify and tap Refresh');
+      if(active&&!player)setStatus('Spotify connected on '+deviceName(active)+'.');
+    }catch(e){setStatus(e.message||'Could not refresh Spotify devices.');}
   }
   async function transferDevice(id){
     if(!id)return;
-    try{await api('/me/player',{method:'PUT',body:JSON.stringify({device_ids:[id],play:true})});showDevice(id===deviceId?'This browser':devicePicker.selectedOptions[0]?.textContent||'Selected device');setStatus(id===deviceId&&platform==='iPhone'?'Tap Play on this iPhone to start.':'Playback transferred.');await refreshDeviceList();}
+    try{await api('/me/player',{method:'PUT',body:JSON.stringify({device_ids:[id],play:true})});const wasBrowser=id===deviceId&&!externalDevice;if(!player||!wasBrowser){deviceId=id;externalDevice=!player||!wasBrowser}showDevice(wasBrowser?'This browser':devicePicker.selectedOptions[0]?.textContent||'Selected device');setStatus(wasBrowser&&platform==='iPhone'?'Tap Play on this iPhone to start.':'Playback transferred.');await refreshDeviceList();}
     catch(e){setStatus(e.message||'Could not transfer playback.');}
   }
   async function togglePlayback(){
-    if(!player||!deviceId){return start()}
+    if(!deviceId){return start()}
+    if(externalDevice){const state=await api('/me/player');await api('/me/player/'+(state?.is_playing?'pause':'play')+'?device_id='+encodeURIComponent(deviceId),{method:'PUT'});return}
+    if(!player){return start()}
     const state=await player.getCurrentState();
     if(state?.track_window?.current_track){await player.togglePlay();return}
     await playDefault();
@@ -133,13 +138,13 @@
   // The playlist is the station’s normal programming. The single default
   // track remains available in the config but must not restart on every visit.
   playDefault=async()=>{const pending=sessionStorage.getItem('sheetal-pending-play');if(pending){sessionStorage.removeItem('sheetal-pending-play');await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[pending]})});return}await playPlaylist()};
-  async function start(){if(loading)return;loading=true;connect.disabled=true;try{if(!await getToken()){await login();return}const alreadyConnected=!!player;await connectPlayer();if(alreadyConnected)await togglePlayback();connect.textContent='SPOTIFY ON';connect.classList.add('on')}catch(e){setStatus(e.message||'Spotify temporarily unavailable.');connect.disabled=false}finally{loading=false}}
+  async function start(){if(loading)return;loading=true;connect.disabled=true;try{if(!await getToken()){await login();return}await refreshDeviceList();if(!player&&externalDevice){if(!commandTimer)commandTimer=setInterval(pollMusicCommands,1200);connect.textContent='SPOTIFY ON';connect.classList.add('on');setStatus('Spotify connected on '+(deviceStatus?.textContent||'the Spotify app')+'.');return}const alreadyConnected=!!player;await connectPlayer();if(alreadyConnected)await togglePlayback();connect.textContent='SPOTIFY ON';connect.classList.add('on')}catch(e){setStatus(e.message||'Spotify temporarily unavailable.');connect.disabled=false}finally{loading=false}}
   async function callback(){const params=new URLSearchParams(location.search),code=params.get('code'),state=params.get('state');if(!code)return;if(!state||state!==sessionStorage.getItem('spotify_state'))return setStatus('Spotify sign-in could not be verified.');try{await exchange(code);await connectPlayer();connect.textContent='TAP TO PLAY';connect.classList.add('on');setStatus(platform==='iPhone'?'Spotify is connected. Tap Play on this iPhone to begin.':'Spotify is connected. Tap Play to begin.')}catch(e){setStatus(e.message||'Spotify sign-in failed.')}}
   async function loadPlaylist(){const box=document.getElementById('playlistResults');try{await getToken()||await login();const c=await config(),d=await api('/playlists/'+c.playlist_id+'/items?limit=50&market=IN');box.hidden=false;box.innerHTML=(d.items||[]).map(x=>{const t=x.item||x.track;if(!t?.uri)return '';return `<div class="result"><div class="cover">${t.album?.images?.[0]?.url?`<img src="${t.album.images[0].url}" alt="">`:'♪'}</div><div class="track"><strong>${esc(t.name)}</strong><span>${esc((t.artists||[]).map(a=>a.name).join(', '))}</span></div><button data-uri="${esc(t.uri)}">PLAY NEXT</button></div>`}).join('')||'<div class="empty">No playable tracks found.</div>';box.querySelectorAll('button').forEach(b=>b.onclick=async()=>{try{await fetch('/api/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uri:b.dataset.uri})});remember({type:'request',track:b.dataset.uri});if(!deviceId)return setStatus('Added to queue. Connect Spotify on this device to play it now.');await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[b.dataset.uri]})});setStatus('Playing next on Sheetal.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not queue that song.')}})}catch(e){setStatus(e.message||'Playlist unavailable.')}}
   function intercept(event){event.preventDefault();event.stopImmediatePropagation();start()}
   connect.addEventListener('click',intercept,true);
   document.querySelectorAll('#homePlay,#playerPlay').forEach(button=>button.addEventListener('click',intercept,true));
-  async function playSelectedQueue(uri){if(!deviceId){sessionStorage.setItem('sheetal-pending-play',uri);setStatus('Starting Spotify for this track…');return start()}try{const state=await player.getCurrentState(),currentUri=state?.track_window?.current_track?.uri||'';if(currentUri===uri){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});return setStatus('This queue item is already on air.')}const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri,next_uri:uri})}),d=await r.json(),target=d.item?.uri||uri;await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[target]})});setStatus('Playing selected queue item.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not play queue item.')}}
+  async function playSelectedQueue(uri){if(!deviceId){sessionStorage.setItem('sheetal-pending-play',uri);setStatus('Starting Spotify for this track…');return start()}if(externalDevice&&!player){try{await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});setStatus('Playing selected queue item on '+(deviceStatus?.textContent||'Spotify')+'.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not play queue item.')}return}try{const state=await player.getCurrentState(),currentUri=state?.track_window?.current_track?.uri||'';if(currentUri===uri){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});return setStatus('This queue item is already on air.')}const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri,next_uri:uri})}),d=await r.json(),target=d.item?.uri||uri;await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[target]})});setStatus('Playing selected queue item.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not play queue item.')}}
   document.addEventListener('sheetal:play-uri',event=>playSelectedQueue(event.detail.uri));
   let linkedUri='',linkIndex=0;
   const lifeLinks=[
@@ -160,6 +165,11 @@
   let playbackDefaultsSet=false;
   setInterval(async()=>{if(player&&deviceId&&!playbackDefaultsSet){playbackDefaultsSet=true;try{await api('/me/player/repeat?state=off&device_id='+encodeURIComponent(deviceId),{method:'PUT'});await api('/me/player/shuffle?state=false&device_id='+encodeURIComponent(deviceId),{method:'PUT'})}catch(_){playbackDefaultsSet=false}}if(player&&deviceId){preparePlaylistPicker();refreshDeviceList()}},5000);
   prev.onclick=()=>player?.previousTrack();next.onclick=()=>player?.nextTrack();callback();
+  // Detect an already-open Spotify app without requiring the Web Playback SDK.
+  // This is the reliable path on phones, where the PWA and Spotify are separate
+  // apps and the browser player may not be available.
+  getToken().then(access=>{if(!access)return;return refreshDeviceList()}).then(()=>{if(externalDevice&&!commandTimer)commandTimer=setInterval(pollMusicCommands,1200)}).catch(()=>{});
+  setInterval(async()=>{if(player)return;try{if(await getToken()){await refreshDeviceList();if(externalDevice&&!commandTimer)commandTimer=setInterval(pollMusicCommands,1200)}}catch(_){ }},5000);
   // The personal browser player is the station source. Reflect its real state
   // in the badge instead of leaving the legacy server badge at OFF AIR.
   setInterval(async()=>{if(!player)return;try{const state=await player.getCurrentState();const badge=document.getElementById('airText');if(badge)badge.textContent=state?.track_window?.current_track?(state.paused?'PAUSED':'LIVE'):'READY';homeProgressFill.style.width=state?.duration?`${state.position/state.duration*100}%`:'0%'}catch(_){ }},1000);

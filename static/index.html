@@ -143,6 +143,14 @@ h1,h2,h3{color:#f4eadc}
     assistant.insertAdjacentHTML('beforebegin', '<section class="assistant-actions" id="assistantActions" aria-live="polite" hidden><strong id="assistantActionTitle">Ready to continue</strong><p id="assistantActionDetail">The assistant prepared an action on this phone. Review it before continuing.</p><div class="assistant-action-row"><button id="assistantActionButton" type="button">OPEN</button><button id="assistantActionDismiss" class="secondary" type="button">DISMISS</button></div></section>');
   }
   document.querySelector('.view.active > .sub')?.replaceChildren(document.createTextNode('Tell your assistant what you need. Music is just one thing it can take care of.'));
+  // The refresh control was removed from the compact panel; keep the legacy
+  // listener harmless so it cannot prevent Gmail controls from initializing.
+  if (!document.getElementById('emailRefresh')) {
+    const refresh = document.createElement('button');
+    refresh.id = 'emailRefresh';
+    refresh.hidden = true;
+    document.body.append(refresh);
+  }
   document.querySelectorAll('[data-assistant-focus]').forEach(button => button.addEventListener('click', () => {
     if (button.dataset.assistantFocus === 'voice') return document.getElementById('topRj')?.click();
     document.getElementById('assistantInput')?.focus({preventScroll:false});
@@ -179,6 +187,13 @@ h1,h2,h3{color:#f4eadc}
     }
     function renderStatus(data) {
       current = data;
+      if (data.error) {
+        setConnectionState('ERROR', 'Unavailable', 'locked');
+        $e('emailStatus').textContent = data.error;
+        connect.textContent = 'RETRY'; connect.disabled = false; inbox.disabled = true;
+        $e('emailSearch').hidden = true; $e('emailChangePin').hidden = false;
+        showUnlock(false); showPinChange(false); return;
+      }
       const connect = $e('emailConnect');
       const inbox = $e('emailInbox');
       if (data.setup_required) {

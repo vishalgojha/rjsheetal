@@ -749,9 +749,12 @@ def email_status(handler):
                 "email": "", "account_count": len(accounts), "setup_required": False, "provider": "composio"}
     except Exception as exc:
         log(f"composio status error: {exc!r}")
+        error = "Composio is temporarily unavailable"
+        if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
+            error = "Composio rejected its server key. Update COMPOSIO_API_KEY in Coolify."
         return {"configured": True, "authorized": True, "connected": False,
                 "email": "", "setup_required": False, "provider": "composio",
-                "error": "Composio is temporarily unavailable"}
+                "error": error}
 
 
 def email_connect_url(handler):

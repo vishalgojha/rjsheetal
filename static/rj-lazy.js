@@ -27,6 +27,10 @@
     const name = String(app || '').trim().toLowerCase();
     const value = String(target || '').trim();
     const message = String(text || '').trim();
+    if (name === 'browser' || name === 'web' || name === 'chrome' || name === 'tab') {
+      if (!/^https?:\/\//i.test(value)) return null;
+      return { url: value, label: 'Open in browser', newTab: true };
+    }
     if (name === 'spotify') {
       if (/^https:\/\/open\.spotify\.com\//i.test(value)) return { url: value, label: 'Open Spotify' };
       if (/^spotify:/i.test(value)) return { url: value, label: 'Open Spotify' };
@@ -66,7 +70,16 @@
     if (detail) detail.textContent = parameters?.text ? 'Prepared on this phone. Review it before sending.' : 'Prepared on this phone. Tap to continue.';
     if (button) {
       button.textContent = action.label;
-      button.onclick = () => { window.location.href = action.url; };
+      button.onclick = () => {
+        if (action.newTab) {
+          const tab = window.open(action.url, '_blank', 'noopener,noreferrer');
+          if (!tab) window.location.href = action.url;
+          return;
+        }
+        // A normal top-level navigation lets Android/iOS hand off https and
+        // custom app schemes to the installed app when the OS allows it.
+        window.location.href = action.url;
+      };
     }
     if (dismiss) dismiss.onclick = () => { panel.hidden = true; };
     panel.hidden = false;

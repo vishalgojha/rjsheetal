@@ -15,8 +15,9 @@ PWA already registers the handler with `Conversation.startSession`.
 
 Description:
 
-> Prepare an action in an installed phone app. Use this when Sheetal asks to
-> open Spotify, open WhatsApp, call a phone number, or open a place in Maps.
+> Prepare an action on Sheetal’s phone. Use this when Sheetal asks to open a
+> browser tab, open Spotify, open WhatsApp, call a phone number, or open a place
+> in Maps.
 > This tool only prepares a visible button on Sheetal's phone. Never claim the
 > app opened, a call started, or a message was sent until Sheetal taps and
 > confirms it.
@@ -25,7 +26,7 @@ Parameters:
 
 | Name | Type | Required | Description |
 |---|---|---:|---|
-| `app` | string | yes | `spotify`, `whatsapp`, `phone`, or `maps` |
+| `app` | string | yes | `browser`, `spotify`, `whatsapp`, `phone`, or `maps` |
 | `target` | string | no | Spotify song/artist/playlist, Maps place, or an app URL |
 | `text` | string | no | WhatsApp message draft or search text |
 | `phone` | string | no | Phone number including country code when needed |

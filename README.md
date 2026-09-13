@@ -1,7 +1,9 @@
 # RJ Sheetal — Live Radio
 
 Mobile-first radio station at **rj.vishalojha.me**. Listeners stream your live show
-and request any song from the Spotify catalog. Runs on a Hetzner VPS via **Coolify**
+and request any song from the Spotify catalog. The installable PWA keeps the live
+player available in the background, with lock-screen play/pause controls and a
+voice-first RJ panel for station commands. Runs on a Hetzner VPS via **Coolify**
 (Docker + Traefik + Let's Encrypt, zero config).
 
 ```
@@ -10,6 +12,7 @@ listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
                  ├─ /api/stream  live MP3 relay from home
                  ├─ /api/search  Spotify catalog search   (client-credentials)
                  ├─ /api/request listener song requests  → queue
+                 └─ /api/rj      RJ voice + station tools → ElevenLabs TTS
                  └─ /api/pending home DJ polls & claims requests
                           ▲
                           │  https (outbound only — no port-forwarding needed)

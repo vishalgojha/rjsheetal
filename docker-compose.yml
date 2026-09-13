@@ -17,6 +17,9 @@ services:
       RJSHEETAL_STATION: ${RJSHEETAL_STATION:-RJ Sheetal}
       RJSHEETAL_TAGLINE: ${RJSHEETAL_TAGLINE:-your favourite radio jockey}
       RJSHEETAL_MAX_QUEUE: ${RJSHEETAL_MAX_QUEUE:-8}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-p9aflnsbBe1o0aDeQa97}
+      ELEVENLABS_MODEL_ID: ${ELEVENLABS_MODEL_ID:-eleven_multilingual_v2}
     volumes:
       - rjsheetal-data:/data
     healthcheck:

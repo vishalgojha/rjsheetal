@@ -8,6 +8,9 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root {
     --bg: #0b0e1a;
@@ -323,6 +326,34 @@
   .note code { color: #75b9d7; }
   .footer { color: #6d7675; }
   #toast { background: #e8e8e5; color: #202627; border-color: #c7cbc8; }
+  .rj-panel {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin-top: 12px;
+    padding: 15px;
+    border-radius: 16px;
+    color: #eef2ef;
+    background: #242a2c;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 12px 24px rgba(0,0,0,.2);
+  }
+  .rj-copy h2 { margin-top: 3px; font-size: 18px; letter-spacing: -.3px; }
+  .rj-copy p { max-width: 30ch; margin-top: 4px; color: #9da8a8; font-size: 11px; line-height: 1.45; }
+  .eyebrow { color: #72b7d5; font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.4px; }
+  .rj-controls { display: flex; align-items: center; gap: 9px; }
+  .rj-mic {
+    display: grid; place-items: center; width: 54px; height: 54px; border: 0; border-radius: 50%; cursor: pointer;
+    color: #132026; background: #73c0dd; box-shadow: 0 5px 16px rgba(93,181,216,.3);
+  }
+  .rj-mic svg { width: 24px; height: 24px; fill: currentColor; }
+  .rj-mic.listening { color: #fff; background: #d97868; animation: rjpulse 1.15s ease-in-out infinite; }
+  @keyframes rjpulse { 50% { box-shadow: 0 0 0 9px rgba(217,120,104,.16), 0 5px 16px rgba(217,120,104,.35); } }
+  .rj-stop { padding: 7px 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; color: #aeb8b7; background: transparent; font-size: 10px; cursor: pointer; }
+  .rj-transcript, .rj-reply { grid-column: 1 / -1; padding: 9px 10px; border-radius: 9px; font-size: 12px; line-height: 1.4; }
+  .rj-transcript { color: #9da8a8; background: rgba(255,255,255,.06); }
+  .rj-reply { color: #252a2b; background: #e9e9e6; }
 
   @media (min-width: 760px) {
     .wrap { max-width: 1040px; padding: 34px 24px 64px; }
@@ -339,6 +370,7 @@
     .stats { grid-column: 2 / 4; }
     .sec { margin-top: 28px; }
     .results, #queue { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rj-panel { grid-template-columns: 1fr auto; }
   }
 </style>
 </head>
@@ -384,6 +416,22 @@
       <span>queue <b id="qcount">0</b></span>
       <span>on air <b id="since">–</b></span>
     </div>
+  </section>
+
+  <section class="rj-panel" aria-labelledby="rj-heading">
+    <div class="rj-copy">
+      <div class="eyebrow">VOICE CONTROL</div>
+      <h2 id="rj-heading">Talk to Sheetal</h2>
+      <p id="rjStatus">Ask what’s playing, check the queue, or request a song.</p>
+    </div>
+    <div class="rj-controls">
+      <button class="rj-mic" id="rjMic" type="button" aria-label="Talk to RJ Sheetal">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4h-2a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z"/></svg>
+      </button>
+      <button class="rj-stop" id="rjStop" type="button">stop</button>
+    </div>
+    <div class="rj-transcript" id="rjTranscript">Tap the mic and speak</div>
+    <div class="rj-reply" id="rjReply" hidden></div>
   </section>
 
   <div class="sec">
@@ -433,6 +481,20 @@ var startTs = null, lastTitle = '';
 var debounce = null;
 
 audio.src = '/api/stream';
+
+if ('mediaSession' in navigator) {
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: 'RJ Sheetal · Live Radio',
+    artist: 'RJ Sheetal',
+    album: 'Live Radio',
+    artwork: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }]
+  });
+  ['play', 'pause'].forEach(function(action) {
+    try { navigator.mediaSession.setActionHandler(action, function() {
+      if (action === 'play') audio.play().catch(function(){}); else audio.pause();
+    }); } catch (e) {}
+  });
+}
 
 function toast(msg, kind) {
   var t = document.getElementById('toast');
@@ -487,6 +549,14 @@ setInterval(function(){
         titleEl.textContent = j.title;
         titleEl.classList.remove('fade');
       }, 300);
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: j.title,
+          artist: 'RJ Sheetal · Live Radio',
+          album: 'RJ Sheetal',
+          artwork: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }]
+        });
+      }
     }
     listenersEl.textContent = j.listeners;
     qcountEl.textContent = j.queue_len;
@@ -570,6 +640,90 @@ function requestTrack(uri) {
 }
 
 document.addEventListener('pointerdown', function(){ if (audio.paused) audio.play().catch(function(){}); }, { once: false });
+
+/* Voice-first RJ controls. The microphone is intentionally opt-in: mobile
+   browsers do not permit an invisible always-on microphone in the background. */
+var rjMic = document.getElementById('rjMic');
+var rjStop = document.getElementById('rjStop');
+var rjStatus = document.getElementById('rjStatus');
+var rjTranscript = document.getElementById('rjTranscript');
+var rjReply = document.getElementById('rjReply');
+var rjAudio = null;
+var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+var recognition = null;
+var rjVoiceActive = false;
+if (Recognition) {
+  recognition = new Recognition();
+  recognition.lang = navigator.language || 'en-IN';
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onstart = function(){
+    rjMic.classList.add('listening');
+    rjStatus.textContent = 'Listening… ask me about the station.';
+    rjTranscript.textContent = 'Listening…';
+  };
+  recognition.onend = function(){
+    if (rjVoiceActive) { try { recognition.start(); } catch (e) {} }
+    else rjMic.classList.remove('listening');
+  };
+  recognition.onerror = function(e){
+    rjMic.classList.remove('listening');
+    rjStatus.textContent = e.error === 'not-allowed' ? 'Microphone permission is needed for voice control.' : 'I missed that — tap the mic and try again.';
+  };
+  recognition.onresult = function(e){
+    var text = e.results[0][0].transcript;
+    rjTranscript.textContent = '“' + text + '”';
+    askRJ(text);
+  };
+  rjMic.addEventListener('click', function(){
+    rjVoiceActive = !rjVoiceActive;
+    if (rjVoiceActive) {
+      try { recognition.start(); } catch (e) {}
+    } else {
+      recognition.stop();
+    }
+  });
+} else {
+  rjMic.addEventListener('click', function(){
+    rjStatus.textContent = 'Voice input is not supported here. Use a current Chrome or Safari browser.';
+  });
+}
+rjStop.addEventListener('click', function(){
+  rjVoiceActive = false;
+  if (recognition) recognition.stop();
+  if (rjAudio) { rjAudio.pause(); rjAudio.src = ''; }
+  rjStatus.textContent = 'RJ voice stopped.';
+  rjMic.classList.remove('listening');
+});
+function askRJ(text) {
+  rjStatus.textContent = 'Sheetal is thinking…';
+  fetch('/api/rj', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: text}) })
+    .then(function(res){
+      var type = res.headers.get('content-type') || '';
+      if (type.indexOf('audio/mpeg') !== -1) {
+        var spoken = decodeURIComponent(res.headers.get('X-RJ-Reply') || '');
+        return res.blob().then(function(blob){ return {audio: URL.createObjectURL(blob), reply: spoken}; });
+      }
+      return res.json();
+    })
+    .then(function(data){
+      var reply = data.reply || 'RJ voice is temporarily unavailable.';
+      rjReply.hidden = false;
+      rjReply.textContent = reply;
+      rjStatus.textContent = data.tool ? ('Tool used: ' + data.tool.name) : 'RJ Sheetal';
+      if (data.audio) {
+        if (rjAudio) rjAudio.pause();
+        rjAudio = new Audio(data.audio);
+        rjAudio.play().catch(function(){ rjStatus.textContent = 'Tap the reply to allow audio playback.'; });
+      }
+    })
+    .catch(function(){ rjStatus.textContent = 'The RJ connection is offline — try again in a moment.'; });
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); });
+}
 </script>
 </body>
 </html>

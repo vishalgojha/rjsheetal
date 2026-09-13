@@ -4,8 +4,8 @@
   "description": "Mobile-first radio by RJ Sheetal — listen live and request any song on Spotify.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b0e1a",
-  "theme_color": "#0b0e1a",
+  "background_color": "#101213",
+  "theme_color": "#101213",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]

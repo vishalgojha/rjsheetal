@@ -43,6 +43,9 @@ RATE_WINDOW_S = int(os.environ.get("RJSHEETAL_RATE_WINDOW", "600"))
 RATE_LIMIT = int(os.environ.get("RJSHEETAL_RATE_LIMIT", "3"))
 
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "p9aflnsbBe1o0aDeQa97")
+ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 
 
 def log(msg):
@@ -232,6 +235,82 @@ def find_track(uri):
         return None
 
 
+# ---------------------------------------------------------------- RJ assistant
+def rj_tool_call(message):
+    """Run the small set of safe station tools the public RJ can use."""
+    text = (message or "").strip()
+    low = text.lower()
+    status = read_json(AUDIO_FILE, {})
+    current = status.get("title") or "the live RJ Sheetal show"
+
+    if any(word in low for word in ("queue", "queued", "coming up", "next songs")):
+        items = [r for r in load_queue() if r.get("status") != "done"]
+        if not items:
+            return {"name": "get_queue", "result": "The request queue is empty."}, \
+                   "अभी request queue खाली है — आप अपनी पसंद का गाना मंगा सकते हैं।"
+        names = ", ".join(r.get("name", "a song") for r in items[:3])
+        return {"name": "get_queue", "result": names}, \
+               f"अभी queue में हैं: {names}."
+
+    if any(word in low for word in ("now playing", "playing now", "what song", "current song", "क्या बज")):
+        return {"name": "get_now_playing", "result": current}, \
+               f"अभी आप सुन रहे हैं {current}, RJ Sheetal के साथ।"
+
+    request_words = ("play ", "request ", "put on ", "बजा", "मंगा", "सुनना है")
+    if any(word in low for word in request_words):
+        query = text
+        for prefix in ("please play ", "play ", "request ", "put on ", "song "):
+            if low.startswith(prefix):
+                query = text[len(prefix):].strip()
+                break
+        if len(query) >= 2 and CREDS.get("cid"):
+            tracks = search_tracks(query, limit=1)
+            if tracks:
+                track = find_track(tracks[0]["uri"])
+                if track:
+                    with QUEUE_LOCK:
+                        q = load_queue()
+                        if any(r.get("uri") == track["uri"] and r.get("status") != "done" for r in q):
+                            return {"name": "request_song", "result": "already queued"}, \
+                                   f"{track['name']} पहले से queue में है।"
+                        if len(q) - sum(1 for r in q if r.get("status") == "done") >= MAX_QUEUE:
+                            return {"name": "request_song", "result": "queue full"}, \
+                                   "Queue अभी full है — थोड़ी देर बाद फिर try कीजिए।"
+                        item = {
+                            "id": base64.b64encode(os.urandom(6)).decode().replace("+", "").replace("/", ""),
+                            "uri": track["uri"], "name": track["name"], "artist": track["artist"],
+                            "album": track["album"], "art": track["art"], "dur_ms": track["dur_ms"],
+                            "ts": int(time.time()), "status": "queued",
+                        }
+                        q.append(item)
+                        save_queue(q)
+                    return {"name": "request_song", "result": track["name"]}, \
+                           f"Done — {track['name']} by {track['artist']} queue में डाल दिया है।"
+        return {"name": "search_song", "result": "no match"}, \
+               "मुझे वह song नहीं मिला। Search box से एक बार फिर try कीजिए।"
+
+    return {"name": "station_help", "result": "available: now playing, queue, request a song"}, \
+           "मैं Sheetal, आपकी live RJ हूँ। आप पूछ सकते हैं अभी क्या बज रहा है, queue में क्या है, या कह सकते हैं कोई गाना बजाओ।"
+
+
+def elevenlabs_speak(text):
+    if not (ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID):
+        return None
+    endpoint = "https://api.elevenlabs.io/v1/text-to-speech/" + urllib.parse.quote(ELEVENLABS_VOICE_ID, safe="")
+    body = json.dumps({
+        "text": text,
+        "model_id": ELEVENLABS_MODEL_ID,
+        "voice_settings": {"stability": 0.45, "similarity_boost": 0.8, "style": 0.6},
+    }).encode()
+    req = urllib.request.Request(endpoint, data=body, method="POST", headers={
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    })
+    with urllib.request.urlopen(req, timeout=25) as r:
+        return r.read()
+
+
 # ---------------------------------------------------------------- http
 class Handler(BaseHTTPRequestHandler):
     server_version = "RJSheetal/1.0"
@@ -277,6 +356,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("manifest.webmanifest", "application/manifest+json")
         elif path == "/icon.svg":
             self._serve_file("icon.svg", "image/svg+xml")
+        elif path == "/sw.js":
+            self._serve_file("sw.js", "application/javascript; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":
@@ -304,6 +385,8 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"results": search_tracks(q[:200])})
         elif path == "/api/queue":
             self._json(200, {"queue": load_queue()})
+        elif path == "/api/rj":
+            self._send(405, json.dumps({"error": "use POST"}), extra={"Allow": "POST"})
         elif path == "/api/pending":
             if not self._authed():
                 self._json(403, {"error": "forbidden"})
@@ -383,6 +466,28 @@ class Handler(BaseHTTPRequestHandler):
                 q.append(item)
                 save_queue(q)
             self._json(200, {"ok": True, "item": item})
+        elif path == "/api/rj":
+            message = str(body.get("message") or "")[:500]
+            if not message:
+                self._json(400, {"error": "message required"})
+                return
+            ok, msg = ok_request(self._client_ip())
+            if not ok:
+                self._json(429, {"error": msg})
+                return
+            try:
+                tool, reply = rj_tool_call(message)
+                audio = elevenlabs_speak(reply)
+                if audio:
+                    self._send(200, audio, "audio/mpeg", extra={
+                        "X-RJ-Reply": urllib.parse.quote(reply, safe=""),
+                        "X-RJ-Tool": tool["name"],
+                    })
+                else:
+                    self._json(200, {"reply": reply, "tool": tool, "voice": False})
+            except Exception as e:
+                log(f"rj error: {e!r}")
+                self._json(502, {"error": "RJ voice is temporarily unavailable"})
         elif path == "/api/claim":
             if not self._authed():
                 self._json(403, {"error": "forbidden"})

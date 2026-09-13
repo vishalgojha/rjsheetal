@@ -2,6 +2,7 @@
 (function(){
   const button = document.getElementById('voiceToggle'), topButton = document.getElementById('topRj'), wakeButton = document.getElementById('wakeToggle');
   const status = document.getElementById('rjStatus'), orb = document.getElementById('agentOrb'), title = document.getElementById('agentTitle'), detail = document.getElementById('agentDetail');
+  if (topButton) topButton.textContent = 'ASK ASSISTANT';
   let session = null, wake = true, loading = false;
   function state(a,b,c){ title.textContent=a; detail.textContent=b; orb.className='orb '+(c||''); }
   function istNow(){ return new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date())+' IST'; }
@@ -35,7 +36,7 @@
     if (!topButton) return;
     const active = !!session || loading;
     topButton.classList.toggle('on', active);
-    topButton.textContent = active ? 'STOP RJ' : 'TALK TO RJ';
+    topButton.textContent = active ? 'STOP' : 'ASK ASSISTANT';
     topButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }, 200);
 })();

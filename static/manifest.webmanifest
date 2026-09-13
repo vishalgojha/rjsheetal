@@ -1,7 +1,7 @@
 {
-  "name": "Radio S · Sheetal FM",
-  "short_name": "Radio S",
-  "description": "Sheetal FM — listen live, talk to the AI RJ, and request songs on Spotify.",
+  "name": "Sheetal Personal Assistant",
+  "short_name": "Sheetal Assistant",
+  "description": "Sheetal’s personal Hindi/Hinglish assistant with optional Sheetal FM music mode.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#211d19",

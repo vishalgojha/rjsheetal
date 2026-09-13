@@ -67,5 +67,14 @@ h1,h2,h3{color:#f4eadc}
 <script>window.SHEETAL_PERSONAL_MODE=true;</script><script src="/app.js"></script>
 <script type="module" src="/rj-lazy.js"></script>
 <script src="/spotify-personal.js"></script>
+<script>
+  document.querySelector('.view.active > .sub')?.replaceChildren(document.createTextNode('Music when you want it. Help, planning, and a thoughtful companion when you need it.'));
+  const assistantView = document.querySelector('.view[data-view="rj"]');
+  if (assistantView) {
+    assistantView.querySelector('.eyebrow').textContent = 'SHEETAL ASSISTANT';
+    assistantView.querySelector('h1').textContent = 'Your personal assistant.';
+    assistantView.querySelector('.sub').textContent = 'Ask for help, planning, reflection, or music whenever you need it.';
+  }
+</script>
 </body>
 </html>

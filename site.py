@@ -46,6 +46,7 @@ SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "p9aflnsbBe1o0aDeQa97")
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
+LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 
 
 def log(msg):
@@ -240,6 +241,12 @@ def rj_tool_call(message):
     """Run the small set of safe station tools the public RJ can use."""
     text = (message or "").strip()
     low = text.lower()
+    # Voice commands commonly begin with the station owner's name.
+    for wake in ("sheetal ji", "sheetal", "शीतल जी", "शीतल"):
+        if low.startswith(wake.lower()):
+            text = text[len(wake):].lstrip(" ,:;-—")
+            low = text.lower()
+            break
     status = read_json(AUDIO_FILE, {})
     current = status.get("title") or "the live RJ Sheetal show"
 
@@ -250,16 +257,16 @@ def rj_tool_call(message):
                    "अभी request queue खाली है — आप अपनी पसंद का गाना मंगा सकते हैं।"
         names = ", ".join(r.get("name", "a song") for r in items[:3])
         return {"name": "get_queue", "result": names}, \
-               f"अभी queue में हैं: {names}."
+               f"{LISTENER_NAME} ji, अभी queue में हैं: {names}."
 
-    if any(word in low for word in ("now playing", "playing now", "what song", "current song", "क्या बज")):
+    if any(word in low for word in ("now playing", "playing now", "what song", "what is playing", "what's playing", "current song", "क्या बज")):
         return {"name": "get_now_playing", "result": current}, \
-               f"अभी आप सुन रहे हैं {current}, RJ Sheetal के साथ।"
+               f"{LISTENER_NAME} ji, अभी आप सुन रही हैं {current}, आपके अपने RJ Sheetal के साथ।"
 
-    request_words = ("play ", "request ", "put on ", "बजा", "मंगा", "सुनना है")
+    request_words = ("play ", "request ", "put on ", "add ", "बजा", "बजाओ", "चलाओ", "मंगा", "सुनना है")
     if any(word in low for word in request_words):
         query = text
-        for prefix in ("please play ", "play ", "request ", "put on ", "song "):
+        for prefix in ("please play ", "play ", "request ", "put on ", "add ", "song "):
             if low.startswith(prefix):
                 query = text[len(prefix):].strip()
                 break
@@ -272,10 +279,10 @@ def rj_tool_call(message):
                         q = load_queue()
                         if any(r.get("uri") == track["uri"] and r.get("status") != "done" for r in q):
                             return {"name": "request_song", "result": "already queued"}, \
-                                   f"{track['name']} पहले से queue में है।"
+                                   f"{LISTENER_NAME} ji, {track['name']} पहले से queue में है।"
                         if len(q) - sum(1 for r in q if r.get("status") == "done") >= MAX_QUEUE:
                             return {"name": "request_song", "result": "queue full"}, \
-                                   "Queue अभी full है — थोड़ी देर बाद फिर try कीजिए।"
+                                   f"{LISTENER_NAME} ji, queue अभी full है — थोड़ी देर बाद फिर try कीजिए।"
                         item = {
                             "id": base64.b64encode(os.urandom(6)).decode().replace("+", "").replace("/", ""),
                             "uri": track["uri"], "name": track["name"], "artist": track["artist"],
@@ -285,12 +292,12 @@ def rj_tool_call(message):
                         q.append(item)
                         save_queue(q)
                     return {"name": "request_song", "result": track["name"]}, \
-                           f"Done — {track['name']} by {track['artist']} queue में डाल दिया है।"
+                           f"{LISTENER_NAME} ji, done — {track['name']} by {track['artist']} मैंने queue में डाल दिया है।"
         return {"name": "search_song", "result": "no match"}, \
-               "मुझे वह song नहीं मिला। Search box से एक बार फिर try कीजिए।"
+               f"{LISTENER_NAME} ji, मुझे वह song नहीं मिला। Search box से एक बार फिर try कीजिए।"
 
     return {"name": "station_help", "result": "available: now playing, queue, request a song"}, \
-           "मैं Sheetal, आपकी live RJ हूँ। आप पूछ सकते हैं अभी क्या बज रहा है, queue में क्या है, या कह सकते हैं कोई गाना बजाओ।"
+           f"{LISTENER_NAME} ji, मैं आपकी live RJ हूँ। आप पूछ सकती हैं अभी क्या बज रहा है, queue में क्या है, या कह सकती हैं कोई गाना बजाओ।"
 
 
 def elevenlabs_speak(text):

@@ -1,123 +1,69 @@
 # Sheetal Personal Assistant
 
-Personal assistant at **rj.vishalojha.me** with private Spotify music, requests,
-memory, and optional voice/text help. The installable PWA keeps the music player
-available while the browser is open, with best-effort media controls. Runs on a Hetzner VPS via **Coolify**
-(Docker + Traefik + Let's Encrypt, zero config).
+Sheetal’s private assistant at **https://rj.vishalojha.me**. The assistant is
+the primary experience: it can remember useful preferences, keep tasks and
+notes, manage a shopping list, make a day plan, answer questions, and control
+Spotify when Sheetal asks. Spotify is an optional control layer, not the
+product’s main screen.
 
-```
-listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
-                 │  /            mobile site (this repo, served by site.py)
-                 ├─ /api/stream  live MP3 relay from home
-                 ├─ /api/search  Spotify catalog search   (client-credentials)
-                 ├─ /api/request listener song requests  → queue
-                 └─ /api/rj      RJ voice + station tools → ElevenLabs TTS
-                 └─ /api/pending home DJ polls & claims requests
-                          ▲
-                          │  https (outbound only — no port-forwarding needed)
-                        home PC  (dj/uplink.py → dj/autodj.py → veena radio)
-```
+## Deploy with Coolify
 
-## 1. VPS (Hetzner)
+Create a public-repository application from this repository and set:
 
-1. Create a Hetzner CX22+ Ubuntu 24.04 server. Note its public IP.
-2. In your DNS (any provider), point the domain at it:
-   ```
-   rj.vishalojha.me   A    <vps-public-ip>
-   ```
-3. Open **UDP 443** in the Hetzner firewall? No — only TCP is needed; open `TCP 80, 443`.
-4. Install Coolify on the VPS (its installer brings Docker + Traefik):
-   ```bash
-   ssh root@<vps-ip>
-   curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
-   ```
-   Finish the web setup at `http://<vps-ip>:8000` (or the printed URL).
+| key | purpose |
+|---|---|
+| `SPOTIFY_CLIENT_ID` | Spotify app client id |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app client secret |
+| `SPOTIFY_PLAYLIST_ID` | Optional starting playlist |
+| `ELEVENLABS_API_KEY` | ElevenLabs TTS/assistant integration |
+| `ELEVENLABS_AGENT_ID` | Optional agent id override |
 
-## 2. Add the app in Coolify
+Add a persistent Coolify volume mounted at `/data`. This stores Sheetal’s
+tasks, notes, shopping list, plans, preferences, music state, and request
+history across redeployments. Add the exact Spotify redirect URI
+`https://rj.vishalojha.me/` in the Spotify developer dashboard.
 
-1. **Databases → Create** (or skip; we use a volume, no DB).
-2. **New resource → Public Repository** → paste `https://github.com/vishalgojha/rjsheetal.git`
-   (branch `main`). Coolify builds from the included `Dockerfile`.
-3. Set these **Environment Variables**:
-   | key | value |
-   |---|---|
-   | `SPOTIFY_CLIENT_ID` | your Spotify app client id |
-| `SPOTIFY_CLIENT_SECRET` | your Spotify app client secret |
-| `SPOTIFY_PLAYLIST_ID` | Personal playlist; defaults to `2JXK0KRt8pLkmUqIPPmmQQ` |
-| `RJSHEETAL_TOKEN` | a long random shared secret (used by the home DJ) |
-| `RJSHEETAL_DEFAULT_TRACK_URI` | optional opening track; defaults to `spotify:track:3dcSec3fFteTR6QlQ194aI` |
-4. **Storage → Add a volume**: mount `/data` (holds the request queue — survives restarts).
-5. **Domains → Add** advanced: `rj.vishalojha.me` and enable **HTTPS (Letsencrypt)**.
-6. Coolify auto-sets `PORT` — the app listens on whatever Coolify injects.
+## Phone setup
 
-> Spotify app: create one free at https://developer.spotify.com/dashboard → App → copy
-> Client ID & Secret. Add the exact redirect URI `https://rj.vishalojha.me/` to the app.
+Sheetal connects her own Spotify Premium account once on each phone. The
+browser uses PKCE, so the Spotify client secret never reaches the phone.
 
-## 3. Phone setup (Android and iPhone)
+1. Open the site in Safari on iPhone or Chrome on Android.
+2. Add it to the Home Screen if desired.
+3. Tap **Connect Spotify** and finish Spotify sign-in.
+4. Ask the assistant to play, pause, resume, skip, replay, choose a song, or
+   choose a playlist.
 
-Each phone is a separate Spotify browser device, so connect Sheetal’s Premium
-Spotify account once on each phone. The app uses PKCE, so the client secret is
-never sent to a phone.
+Only one Spotify device can play for the account at a time. The main screen
+shows a compact “Playing on” handoff when more than one phone/browser is
+connected. Keep the browser/PWA open for reliable web playback; locked or
+suspended mobile browsers can stop Web Playback. Typed assistant chat remains
+available when microphone access is unavailable.
 
-1. Open the site in Chrome on Android or Safari on iPhone and use **Add to Home Screen**.
-2. Open the installed app, tap **Connect Spotify**, finish sign-in, then tap **Play**.
-3. Keep the app open while listening. iPhone may require another Play tap after a device transfer.
-4. Use the **Playing on** control on the main screen to see the active Spotify device and transfer playback.
-5. If the microphone is denied or unreliable, use the typed assistant box; voice requires HTTPS and a fresh user tap.
+## Assistant capabilities
 
-Spotify permits only one active playback device for the account. The web version
-cannot guarantee playback or live voice after the phone is locked, the browser is
-suspended, or the OS kills the PWA. That requires a native Android/iOS client.
+The ElevenLabs agent uses webhook tools backed by this app to:
 
-## 4. Home PC (the DJ machine)
+- create, list, and complete tasks;
+- save and read notes;
+- add and read shopping items;
+- save a simple day plan in IST;
+- remember explicit preferences and taste signals;
+- read music state and control Spotify on the active browser;
+- use the attached Rekhta knowledge base when a relevant reflective thought
+  genuinely fits.
+
+These are persistent in-app records. They are not phone notifications or
+external bookings unless a separate integration is added.
+
+## Local development
 
 ```bash
-cd ~/"Documents/Default Project/dj"
-
-# 1) drop the two link modules next to autodj/ui/radio
-cp ../../rjsheetal/rjlink.py ../../rjsheetal/uplink.py .
-
-# 2) tell the DJ where the public site lives
-cat > rjlink_creds.py <<'EOF'
-RJSHEETAL_URL   = "https://rj.vishalojha.me"
-RJSHEETAL_TOKEN = "<the RJSHEETAL_TOKEN you set in Coolify>"
-EOF
-
-# 3) run the audio upload relay (keeps stream + now-playing synced)
-python3 uplink.py          # Ctrl+C stops it
-
-# 4) restart the auto-DJ so it picks up audience requests
-#    autodj now: fetches /api/pending, plays requests before pool tracks,
-#    and reports them back as "on air" so the public queue clears.
-```
-
-Run `uplink.py` under systemd or a terminal/tmux on the DJ machine. It only needs
-**outbound** HTTPS to the VPS — no router ports, no static IP required.
-
-## 5. Public API (used by the site)
-
-| method | path | auth | purpose |
-|---|---|---|---|
-| GET | `/api/status` | – | on-air, now-playing title, listeners, queue length |
-| GET | `/api/search?q=` | – | Spotify track search (6 results) |
-| POST | `/api/request` `{uri}` | – | add a track to the request queue (rate-limited) |
-| GET | `/api/queue` | – | full request queue |
-| POST | `/ingest` | token | home → VPS audio relay stream |
-| POST | `/api/metadata` `{title}` | token | now-playing title from home |
-| GET | `/api/pending` | token | home DJ poll for new requests |
-| POST | `/api/claim` `{id}` | token | home claims a request (shows "ON AIR") |
-| POST | `/api/done` `{id}` | token | home marks a request played (removes it) |
-| GET | `/api/stream` | – | live MP3 for the player |
-| GET | `/healthz` | – | Coolify health check |
-
-## 6. Local dev / testing without the flow meter
-
-```bash
-PORT=8080 RJSHEETAL_TOKEN=dev RJSHEETAL_DATA=/tmp/rjdata \
+PORT=8080 RJSHEETAL_DATA=/tmp/rjdata \
 SPOTIFY_CLIENT_ID=... SPOTIFY_CLIENT_SECRET=... python3 site.py
 
 curl localhost:8080/healthz
-curl "localhost:8080/api/search?q=chaiyya"
-curl -X POST localhost:8080/api/request -H 'Content-Type: application/json' \
-     -d '{"uri":"spotify:track:5H4rKylLnO8KrmdXTRhj5s"}'
 ```
+
+The application is intentionally a small Python HTTP service with static
+browser assets, so it can run directly in Coolify without a database.

@@ -33,6 +33,12 @@ QUEUE_FILE = os.path.join(DATA_DIR, "requests.json")
 AUDIO_FILE = os.path.join(DATA_DIR, "audio.json")
 MEMORY_FILE = os.path.join(DATA_DIR, "radio-memory.json")
 DEFAULT_SEEDED_FILE = os.path.join(DATA_DIR, "default-track-seeded")
+TASKS_FILE = os.path.join(DATA_DIR, "tasks.json")
+NOTES_FILE = os.path.join(DATA_DIR, "notes.json")
+SHOPPING_FILE = os.path.join(DATA_DIR, "shopping.json")
+PLANS_FILE = os.path.join(DATA_DIR, "plans.json")
+MUSIC_COMMAND_FILE = os.path.join(DATA_DIR, "music-command.json")
+MUSIC_STATE_FILE = os.path.join(DATA_DIR, "music-state.json")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
@@ -55,7 +61,7 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "7qBNUtXRGP0jPi0H4r8
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
-DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "spotify:track:3dcSec3fFteTR6QlQ194aI").strip()
+DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "").strip()
 SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip() or "2JXK0KRt8pLkmUqIPPmmQQ"
 
 MOOD_QUERIES = {
@@ -154,8 +160,12 @@ AUDIO = Buffer()
 
 # ---------------------------------------------------------------- queue
 QUEUE_LOCK = threading.Lock()
+MEMORY_LOCK = threading.RLock()
+ASSISTANT_LOCK = threading.RLock()
+MUSIC_LOCK = threading.RLock()
 RATE_LOCK = threading.Lock()
 HITS = {}   # ip -> [timestamps]
+AGENT_HITS = {}  # ip -> [timestamps]
 
 
 def load_queue():
@@ -169,7 +179,8 @@ def save_queue(q):
 def load_memory():
     return read_json(MEMORY_FILE, {
         "plays": {}, "skips": {}, "replays": {}, "requests": [],
-        "conversations": [], "moods": [], "updated": 0,
+        "conversations": [], "moods": [], "preferences": [],
+        "taste_notes": [], "updated": 0,
     })
 
 
@@ -184,37 +195,47 @@ def memory_context():
         "recent_requests": memory.get("requests", [])[-8:],
         "recent_conversations": memory.get("conversations", [])[-8:],
         "recent_moods": memory.get("moods", [])[-8:],
+        "preferences": memory.get("preferences", [])[-20:],
+        "taste_notes": memory.get("taste_notes", [])[-20:],
         "updated": memory.get("updated", 0),
     }
 
 
 def record_memory(event):
     """Store compact behavioural signals; never store audio or access tokens."""
-    memory = load_memory()
-    kind = str(event.get("type", ""))[:24]
-    track = str(event.get("track", ""))[:240]
-    if kind in ("play", "skip", "replay") and track:
-        bucket = memory.setdefault(kind + "s", {})
-        bucket[track] = int(bucket.get(track, 0)) + 1
-        if kind == "play":
-            # Browser Spotify playback is the personal station source. Keep
-            # the RJ webhook aligned with the track the listener actually
-            # started, rather than the retired local AutoDJ metadata file.
-            write_json(AUDIO_FILE, {"title": track, "ts": int(time.time()), "personal": True})
-    if kind == "request" and track:
-        memory.setdefault("requests", []).append({"track": track, "ts": int(time.time())})
-        memory["requests"] = memory["requests"][-50:]
-    if kind == "mood" and event.get("text"):
-        memory.setdefault("moods", []).append({"text": str(event["text"])[:240], "ts": int(time.time())})
-        memory["moods"] = memory["moods"][-50:]
-    if kind == "conversation" and event.get("text"):
-        memory.setdefault("conversations", []).append({
-            "source": str(event.get("source", "user"))[:20],
-            "text": str(event["text"])[:400], "ts": int(time.time()),
-        })
-        memory["conversations"] = memory["conversations"][-80:]
-    memory["updated"] = int(time.time())
-    write_json(MEMORY_FILE, memory)
+    with MEMORY_LOCK:
+        memory = load_memory()
+        kind = str(event.get("type", ""))[:24]
+        track = str(event.get("track", ""))[:240]
+        if kind in ("play", "skip", "replay") and track:
+            bucket = memory.setdefault(kind + "s", {})
+            bucket[track] = int(bucket.get(track, 0)) + 1
+            if kind == "play":
+                # Browser Spotify playback is the personal station source. Keep
+                # the assistant aligned with the track the listener actually
+                # started, rather than the retired local AutoDJ metadata file.
+                write_json(AUDIO_FILE, {"title": track, "ts": int(time.time()), "personal": True})
+        if kind == "request" and track:
+            memory.setdefault("requests", []).append({"track": track, "ts": int(time.time())})
+            memory["requests"] = memory["requests"][-50:]
+        if kind == "mood" and event.get("text"):
+            memory.setdefault("moods", []).append({"text": str(event["text"])[:240], "ts": int(time.time())})
+            memory["moods"] = memory["moods"][-50:]
+        if kind == "conversation" and event.get("text"):
+            memory.setdefault("conversations", []).append({
+                "source": str(event.get("source", "user"))[:20],
+                "text": str(event["text"])[:400], "ts": int(time.time()),
+            })
+            memory["conversations"] = memory["conversations"][-80:]
+        if kind in ("preference", "taste"):
+            value = str(event.get("preference") or event.get("text") or event.get("taste") or "").strip()[:300]
+            if value:
+                entry = {"text": value, "category": str(event.get("category") or "general")[:50], "ts": int(time.time())}
+                bucket = "taste_notes" if kind == "taste" else "preferences"
+                memory.setdefault(bucket, []).append(entry)
+                memory[bucket] = memory[bucket][-80:]
+        memory["updated"] = int(time.time())
+        write_json(MEMORY_FILE, memory)
 
 
 def ok_request(ip):
@@ -226,6 +247,293 @@ def ok_request(ip):
             return False, "slow down — a few too many requests"
         HITS[ip] = hits + [now]
     return True, ""
+
+
+def ok_agent_request(ip):
+    """Rate-limit assistant webhooks without throttling normal music requests."""
+    now = time.time()
+    with RATE_LOCK:
+        hits = [t for t in AGENT_HITS.get(ip, []) if now - t < RATE_WINDOW_S]
+        if len(hits) >= max(RATE_LIMIT * 10, 30):
+            AGENT_HITS[ip] = hits
+            return False, "assistant actions are briefly rate-limited"
+        AGENT_HITS[ip] = hits + [now]
+    return True, ""
+
+
+# ---------------------------------------------------------------- personal assistant data
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+
+def now_ist():
+    return datetime.datetime.now(datetime.timezone.utc).astimezone(IST)
+
+
+def timestamp():
+    return now_ist().isoformat(timespec="seconds")
+
+
+def new_id(prefix):
+    return prefix + "-" + base64.urlsafe_b64encode(os.urandom(7)).decode().rstrip("=")
+
+
+def clean_text(value, limit=300):
+    return " ".join(str(value or "").split())[:limit].strip()
+
+
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def load_list(path):
+    data = read_json(path, [])
+    return data if isinstance(data, list) else []
+
+
+def save_list(path, data):
+    os.makedirs(DATA_DIR, exist_ok=True)
+    write_json(path, data)
+
+
+def create_task(title, due="", priority="normal", notes=""):
+    title = clean_text(title, 180)
+    if not title:
+        return None
+    priority = clean_text(priority, 20).lower() or "normal"
+    if priority not in ("low", "normal", "high"):
+        priority = "normal"
+    item = {
+        "id": new_id("task"), "title": title, "due": clean_text(due, 80),
+        "priority": priority, "notes": clean_text(notes, 400),
+        "status": "open", "created_at": timestamp(), "updated_at": timestamp(),
+    }
+    with ASSISTANT_LOCK:
+        tasks = load_list(TASKS_FILE)
+        tasks.append(item)
+        save_list(TASKS_FILE, tasks[-300:])
+    return item
+
+
+def find_task(task_id="", title=""):
+    tasks = load_list(TASKS_FILE)
+    task_id = clean_text(task_id, 100)
+    title = clean_text(title, 180).lower()
+    if task_id:
+        return next((t for t in tasks if t.get("id") == task_id and t.get("status") != "done"), None)
+    if title:
+        exact = next((t for t in tasks if t.get("status") != "done" and str(t.get("title", "")).lower() == title), None)
+        return exact or next((t for t in tasks if t.get("status") != "done" and title in str(t.get("title", "")).lower()), None)
+    return None
+
+
+def complete_task(task_id="", title=""):
+    with ASSISTANT_LOCK:
+        tasks = load_list(TASKS_FILE)
+        target = find_task(task_id, title)
+        if not target:
+            return None
+        for item in tasks:
+            if item.get("id") == target.get("id"):
+                item["status"] = "done"
+                item["completed_at"] = timestamp()
+                item["updated_at"] = timestamp()
+                target = item
+                break
+        save_list(TASKS_FILE, tasks)
+        return target
+
+
+def remove_task(task_id="", title=""):
+    with ASSISTANT_LOCK:
+        tasks = load_list(TASKS_FILE)
+        target = find_task(task_id, title)
+        if not target:
+            return None
+        kept = [item for item in tasks if item.get("id") != target.get("id")]
+        save_list(TASKS_FILE, kept)
+        return target
+
+
+def create_note(title, body, tags=""):
+    title = clean_text(title, 120) or "Untitled note"
+    body = str(body or "").strip()[:2000]
+    if not body:
+        return None
+    item = {"id": new_id("note"), "title": title, "body": body,
+            "tags": clean_text(tags, 160), "created_at": timestamp(), "updated_at": timestamp()}
+    with ASSISTANT_LOCK:
+        notes = load_list(NOTES_FILE)
+        notes.append(item)
+        save_list(NOTES_FILE, notes[-300:])
+    return item
+
+
+def remove_note(note_id):
+    with ASSISTANT_LOCK:
+        notes = load_list(NOTES_FILE)
+        target = next((n for n in notes if n.get("id") == clean_text(note_id, 100)), None)
+        if not target:
+            return None
+        save_list(NOTES_FILE, [n for n in notes if n.get("id") != target.get("id")])
+        return target
+
+
+def add_shopping_item(item, quantity="", category=""):
+    name = clean_text(item, 140)
+    if not name:
+        return None
+    entry = {"id": new_id("shop"), "item": name, "quantity": clean_text(quantity, 60),
+             "category": clean_text(category, 60), "status": "open",
+             "created_at": timestamp(), "updated_at": timestamp()}
+    with ASSISTANT_LOCK:
+        items = load_list(SHOPPING_FILE)
+        duplicate = next((x for x in items if x.get("status") != "done" and str(x.get("item", "")).lower() == name.lower()), None)
+        if duplicate:
+            if entry["quantity"]:
+                duplicate["quantity"] = entry["quantity"]
+            duplicate["updated_at"] = timestamp()
+            save_list(SHOPPING_FILE, items)
+            return duplicate
+        items.append(entry)
+        save_list(SHOPPING_FILE, items[-300:])
+    return entry
+
+
+def toggle_shopping(item_id):
+    with ASSISTANT_LOCK:
+        items = load_list(SHOPPING_FILE)
+        target = next((x for x in items if x.get("id") == clean_text(item_id, 100)), None)
+        if not target:
+            return None
+        target["status"] = "done" if target.get("status") != "done" else "open"
+        target["updated_at"] = timestamp()
+        save_list(SHOPPING_FILE, items)
+        return target
+
+
+def remove_shopping_item(item_id):
+    with ASSISTANT_LOCK:
+        items = load_list(SHOPPING_FILE)
+        target = next((x for x in items if x.get("id") == clean_text(item_id, 100)), None)
+        if not target:
+            return None
+        save_list(SHOPPING_FILE, [x for x in items if x.get("id") != target.get("id")])
+        return target
+
+
+def save_plan(plan_date, items, summary=""):
+    day = clean_text(plan_date, 40) or now_ist().date().isoformat()
+    if not isinstance(items, list):
+        items = [part.strip(" -•") for part in str(items or "").replace("\n", ",").split(",") if part.strip(" -•")]
+    normalized = [clean_text(x, 180) for x in items if clean_text(x, 180)]
+    plan = {"id": new_id("plan"), "date": day, "items": normalized[:30],
+            "summary": clean_text(summary, 400), "updated_at": timestamp()}
+    with ASSISTANT_LOCK:
+        plans = load_list(PLANS_FILE)
+        old = next((p for p in plans if p.get("date") == day), None)
+        if old:
+            plan["id"] = old.get("id", plan["id"])
+            plan["created_at"] = old.get("created_at", timestamp())
+            plans = [p for p in plans if p.get("date") != day]
+        else:
+            plan["created_at"] = timestamp()
+        plans.append(plan)
+        save_list(PLANS_FILE, plans[-180:])
+    return plan
+
+
+def assistant_dashboard():
+    tasks = load_list(TASKS_FILE)
+    notes = load_list(NOTES_FILE)
+    shopping = load_list(SHOPPING_FILE)
+    plans = load_list(PLANS_FILE)
+    return {
+        "now_ist": timestamp(),
+        "tasks": [t for t in tasks if t.get("status") != "done"][-50:],
+        "notes": notes[-8:],
+        "shopping": shopping[-50:],
+        "plans": plans[-8:],
+        "memory": memory_context(),
+    }
+
+
+def music_state():
+    data = read_json(MUSIC_STATE_FILE, {})
+    if not isinstance(data, dict):
+        return {}
+    try:
+        updated = datetime.datetime.fromisoformat(str(data.get("updated_at", "")))
+        connected = bool(data.get("client_id")) and (now_ist() - updated).total_seconds() < 45
+    except (TypeError, ValueError):
+        connected = False
+    data["connected"] = connected
+    return data
+
+
+def record_music_state(payload):
+    if not isinstance(payload, dict):
+        return music_state()
+    state = {
+        "client_id": clean_text(payload.get("client_id"), 100),
+        "device": clean_text(payload.get("device"), 100),
+        "track_uri": clean_text(payload.get("track_uri"), 180),
+        "title": clean_text(payload.get("title"), 180),
+        "artist": clean_text(payload.get("artist"), 240),
+        "art": str(payload.get("art") or "")[:500],
+        "position_ms": max(0, safe_int(payload.get("position_ms"))),
+        "duration_ms": max(0, safe_int(payload.get("duration_ms"))),
+        "paused": bool(payload.get("paused", True)),
+        "updated_at": timestamp(),
+    }
+    with MUSIC_LOCK:
+        write_json(MUSIC_STATE_FILE, state)
+    return state
+
+
+def issue_music_command(action, payload=None):
+    action = clean_text(action, 40).lower().replace(" ", "_")
+    allowed = {"play", "pause", "toggle", "next", "previous", "play_song", "play_playlist", "queue_next", "seek"}
+    if action not in allowed:
+        return {"ok": False, "error": "unsupported music action"}
+    state = music_state()
+    client_id = clean_text((payload or {}).get("client_id") if isinstance(payload, dict) else "", 100) or state.get("client_id", "")
+    if not client_id or not state.get("connected"):
+        return {"ok": False, "error": "no phone is connected to music yet"}
+    command = {
+        "id": new_id("music"), "action": action,
+        "query": clean_text((payload or {}).get("query") if isinstance(payload, dict) else "", 200),
+        "playlist_id": clean_text((payload or {}).get("playlist_id") if isinstance(payload, dict) else "", 100),
+        "position_ms": max(0, safe_int((payload or {}).get("position_ms"))) if isinstance(payload, dict) else 0,
+        "target_client_id": client_id, "created_at": timestamp(),
+    }
+    with MUSIC_LOCK:
+        write_json(MUSIC_COMMAND_FILE, command)
+    return {"ok": True, "command_id": command["id"], "action": action, "target_device": state.get("device", "")}
+
+
+def agent_music_control(action, query="", playlist_id="", position_ms=0):
+    action = clean_text(action, 40).lower()
+    if action in ("song", "play song", "track"):
+        action = "play_song"
+    if action in ("playlist", "play list"):
+        action = "play_playlist"
+    payload = {"query": query, "playlist_id": playlist_id, "position_ms": position_ms}
+    if action == "play_song":
+        query = clean_text(query, 200)
+        if len(query) < 2:
+            return {"ok": False, "error": "song title is required"}
+        matches = search_tracks(query, limit=1)
+        if not matches:
+            return {"ok": False, "error": "no Spotify match found"}
+        payload["query"] = matches[0]["uri"]
+        result = issue_music_command(action, payload)
+        if result.get("ok"):
+            result.update({"song": matches[0]["name"], "artist": matches[0]["artist"]})
+        return result
+    return issue_music_command(action, payload)
 
 
 # ---------------------------------------------------------------- spotify
@@ -565,6 +873,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("rj-lazy.js", "application/javascript; charset=utf-8")
         elif path == "/spotify-personal.js":
             self._serve_file("spotify-personal.js", "application/javascript; charset=utf-8")
+        elif path == "/assistant-life.js":
+            self._serve_file("assistant-life.js", "application/javascript; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":
@@ -594,6 +904,27 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"client_id": CREDS.get("cid", ""), "playlist_id": SPOTIFY_PLAYLIST_ID, "default_track": DEFAULT_TRACK_URI})
         elif path == "/api/memory/context":
             self._json(200, memory_context())
+        elif path == "/api/assistant/dashboard":
+            self._json(200, assistant_dashboard())
+        elif path == "/api/tasks":
+            self._json(200, {"tasks": load_list(TASKS_FILE)})
+        elif path == "/api/notes":
+            self._json(200, {"notes": load_list(NOTES_FILE)})
+        elif path == "/api/shopping":
+            self._json(200, {"shopping": load_list(SHOPPING_FILE)})
+        elif path == "/api/plans":
+            self._json(200, {"plans": load_list(PLANS_FILE)})
+        elif path == "/api/music/state":
+            self._json(200, music_state())
+        elif path == "/api/music/command":
+            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            client_id = params.get("client_id", [""])[0]
+            last_id = params.get("after", [""])[0]
+            command = read_json(MUSIC_COMMAND_FILE, {})
+            if not isinstance(command, dict) or command.get("id") == last_id or command.get("target_client_id") != client_id:
+                self._json(200, {"command": None})
+            else:
+                self._json(200, {"command": command})
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
             try:
@@ -612,14 +943,24 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/queue":
             self._json(200, {"queue": load_queue()})
         elif path == "/api/agent/now-playing":
-            st = read_json(AUDIO_FILE, {})
-            self._json(200, {"station": STATION, "now_playing": st.get("title", ""), "on_air": bool(st.get("personal") or self.buf.on_air())})
+            st = music_state()
+            self._json(200, {"station": "Sheetal Assistant", "now_playing": st.get("title", ""), "artist": st.get("artist", ""), "paused": st.get("paused", True), "device": st.get("device", ""), "on_air": bool(st.get("title") and not st.get("paused", True))})
         elif path == "/api/agent/queue":
             items = [r for r in load_queue() if r.get("status") != "done"]
             self._json(200, {"station": STATION, "queue": [
                 {"song": r.get("name", ""), "artist": r.get("artist", ""), "status": r.get("status", "queued")}
                 for r in items[:8]
             ]})
+        elif path == "/api/agent/tasks":
+            self._json(200, {"tasks": [t for t in load_list(TASKS_FILE) if t.get("status") != "done"]})
+        elif path == "/api/agent/notes":
+            self._json(200, {"notes": load_list(NOTES_FILE)[-20:]})
+        elif path == "/api/agent/shopping":
+            self._json(200, {"shopping": [x for x in load_list(SHOPPING_FILE) if x.get("status") != "done"]})
+        elif path == "/api/agent/memory":
+            self._json(200, memory_context())
+        elif path == "/api/agent/music-state":
+            self._json(200, music_state())
         elif path == "/api/rj":
             self._send(405, json.dumps({"error": "use POST"}), extra={"Allow": "POST"})
         elif path == "/api/pending":
@@ -670,7 +1011,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True})
         elif path == "/api/memory/event":
             event = body if isinstance(body, dict) else {}
-            if event.get("type") not in ("play", "skip", "replay", "request", "conversation", "mood"):
+            if event.get("type") not in ("play", "skip", "replay", "request", "conversation", "mood", "preference", "taste"):
                 self._json(400, {"error": "unsupported memory event"})
                 return
             try:
@@ -679,6 +1020,37 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 log(f"memory error: {e!r}")
                 self._json(500, {"error": "memory unavailable"})
+        elif path == "/api/tasks":
+            item = create_task(body.get("title"), body.get("due"), body.get("priority"), body.get("notes"))
+            self._json(201 if item else 400, {"ok": bool(item), "task": item, **({} if item else {"error": "task title required"})})
+        elif path == "/api/tasks/complete":
+            item = complete_task(body.get("id"), body.get("title"))
+            self._json(200 if item else 404, {"ok": bool(item), "task": item})
+        elif path == "/api/tasks/remove":
+            item = remove_task(body.get("id"), body.get("title"))
+            self._json(200 if item else 404, {"ok": bool(item), "task": item})
+        elif path == "/api/notes":
+            item = create_note(body.get("title"), body.get("body"), body.get("tags"))
+            self._json(201 if item else 400, {"ok": bool(item), "note": item, **({} if item else {"error": "note body required"})})
+        elif path == "/api/notes/remove":
+            item = remove_note(body.get("id"))
+            self._json(200 if item else 404, {"ok": bool(item), "note": item})
+        elif path == "/api/shopping":
+            item = add_shopping_item(body.get("item"), body.get("quantity"), body.get("category"))
+            self._json(201 if item else 400, {"ok": bool(item), "item": item, **({} if item else {"error": "shopping item required"})})
+        elif path == "/api/shopping/toggle":
+            item = toggle_shopping(body.get("id"))
+            self._json(200 if item else 404, {"ok": bool(item), "item": item})
+        elif path == "/api/shopping/remove":
+            item = remove_shopping_item(body.get("id"))
+            self._json(200 if item else 404, {"ok": bool(item), "item": item})
+        elif path == "/api/plans":
+            item = save_plan(body.get("date"), body.get("items", body.get("plan", [])), body.get("summary"))
+            self._json(201, {"ok": True, "plan": item})
+        elif path == "/api/music/state":
+            self._json(200, {"ok": True, "state": record_music_state(body)})
+        elif path == "/api/music/command-result":
+            self._json(200, {"ok": True, "received": clean_text(body.get("command_id"), 100)})
         elif path == "/api/rj/announcement":
             if not ELEVENLABS_API_KEY:
                 self._json(503, {"error": "RJ announcements are not configured"})
@@ -709,6 +1081,58 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(429, {"ok": False, "error": msg})
                 return
             self._json(200, agent_set_mood(body.get("mood") or body.get("feeling") or ""))
+        elif path == "/api/agent/create-task":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            item = create_task(body.get("title") or body.get("task"), body.get("due") or body.get("reminder"), body.get("priority"), body.get("notes"))
+            self._json(200, {"ok": bool(item), "task": item, **({} if item else {"error": "task title required"})})
+        elif path == "/api/agent/complete-task":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            item = complete_task(body.get("id"), body.get("title") or body.get("task"))
+            self._json(200 if item else 404, {"ok": bool(item), "task": item, **({} if item else {"error": "open task not found"})})
+        elif path == "/api/agent/create-note":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            item = create_note(body.get("title"), body.get("body") or body.get("text"), body.get("tags"))
+            self._json(200, {"ok": bool(item), "note": item, **({} if item else {"error": "note body required"})})
+        elif path == "/api/agent/add-shopping":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            item = add_shopping_item(body.get("item") or body.get("name"), body.get("quantity"), body.get("category"))
+            self._json(200, {"ok": bool(item), "item": item, **({} if item else {"error": "shopping item required"})})
+        elif path == "/api/agent/plan-day":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            item = save_plan(body.get("date"), body.get("items", body.get("plan", [])), body.get("summary"))
+            self._json(200, {"ok": True, "plan": item})
+        elif path == "/api/agent/remember-preference":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            preference = clean_text(body.get("preference") or body.get("taste") or body.get("text"), 300)
+            if not preference:
+                self._json(400, {"ok": False, "error": "preference required"})
+                return
+            record_memory({"type": "taste" if body.get("taste") else "preference", "preference": preference, "category": body.get("category")})
+            self._json(200, {"ok": True, "remembered": preference})
+        elif path == "/api/agent/music-control":
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            self._json(200, agent_music_control(body.get("action"), body.get("query"), body.get("playlist_id"), body.get("position_ms", 0)))
         elif path == "/api/request":
             ok, msg = ok_request(self._client_ip())
             if not ok:

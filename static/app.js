@@ -1,4 +1,4 @@
-/* Sheetal FM radio shell. Feature data is fetched only when needed. */
+/* Sheetal personal assistant shell. Feature data is fetched only when needed. */
 const $ = id => document.getElementById(id);
 const audio = $('audio');
 let toastTimer, statusTimer;
@@ -25,7 +25,7 @@ function setPlaying(playing) {
   $('playerPlay').querySelector('.play-icon').style.display = playing ? 'none' : 'block';
 }
 function setMetadata(title, artist, art) {
-  title = title || 'Waiting for the show'; artist = artist || 'Sheetal FM';
+  title = title || 'Waiting for music'; artist = artist || 'Sheetal';
   ['homeTitle','nowTitle','playerTitle'].forEach(id => $(id).textContent = title);
   $('homeArtist').textContent = artist; $('nowArtist').textContent = artist; $('playerArtist').textContent = artist;
   document.querySelectorAll('#recordHome,#recordPlayer').forEach(node => { node.classList.toggle('has-art', !!art); node.style.backgroundImage = art ? `url("${art.replace(/"/g, '%22')}")` : ''; });
@@ -35,7 +35,7 @@ async function refreshStatus() {
     const data = await getJSON('/api/status', {}, 6000);
     $('airText').textContent = data.on_air ? 'LIVE' : 'OFF AIR';
     $('listenerLabel').textContent = `${data.listeners || 0} listening`;
-    if (data.title) setMetadata(data.title, data.artist || 'Sheetal FM · Live Radio', data.art);
+    if (data.title) setMetadata(data.title, data.artist || 'Sheetal · Music', data.art);
     $('progressFill').style.width = data.on_air ? '100%' : '0%';
   } catch (_) { $('airText').textContent = 'OFF AIR'; }
 }
@@ -50,7 +50,7 @@ async function toggleAudio() {
 function loadQueue() {
   getJSON('/api/queue', {}, 6000).then(data => {
     const items = (data.queue || []).filter(item => item.status !== 'done');
-    $('queue').innerHTML = items.length ? items.map(item => `<div class="queue-item"><div class="cover">${item.art ? `<img src="${esc(item.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(item.name)}</strong><span>${esc(item.artist || 'Sheetal FM')}${item.status === 'claimed' ? ' · ON AIR NOW' : ''}</span></div><div class="queue-actions"><button data-queue-action="play" data-uri="${esc(item.uri)}">PLAY NOW</button><button data-queue-action="remove" data-id="${esc(item.id)}">REMOVE</button></div></div>`).join('') : '<div class="empty">No requests yet — be the first to put one on air.</div>';
+    $('queue').innerHTML = items.length ? items.map(item => `<div class="queue-item"><div class="cover">${item.art ? `<img src="${esc(item.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(item.name)}</strong><span>${esc(item.artist || 'Sheetal')}${item.status === 'claimed' ? ' · ON AIR NOW' : ''}</span></div><div class="queue-actions"><button data-queue-action="play" data-uri="${esc(item.uri)}">PLAY NOW</button><button data-queue-action="remove" data-id="${esc(item.id)}">REMOVE</button></div></div>`).join('') : '<div class="empty">No requests yet — be the first to put one on air.</div>';
     $('queue').querySelectorAll('[data-queue-action]').forEach(button => button.addEventListener('click', async () => {
       if (button.dataset.queueAction === 'play') return document.dispatchEvent(new CustomEvent('sheetal:play-uri', {detail:{uri:button.dataset.uri}}));
       try { await getJSON('/api/queue/remove', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:button.dataset.id})}, 6000); loadQueue(); } catch (_) { toast('Could not remove that request.'); }
@@ -65,7 +65,7 @@ async function requestSong(uri) {
 async function loadPlaylist() {
   const button = $('playlistButton'), box = $('playlistResults');
   if (button.dataset.loaded === '1') { box.hidden = !box.hidden; return; }
-  button.disabled = true; button.textContent = 'LOADING…'; box.hidden = false; box.innerHTML = '<div class="empty">Loading Sheetal’s playlist…</div>';
+  button.disabled = true; button.textContent = 'LOADING…'; box.hidden = false; box.innerHTML = '<div class="empty">Loading the playlist…</div>';
   try {
     const data = await getJSON('/api/playlist', {}, 10000);
     box.innerHTML = (data.results || []).map(track => `<div class="result"><div class="cover">${track.art ? `<img src="${esc(track.art)}" alt="">` : '♪'}</div><div class="track"><strong>${esc(track.name)}</strong><span>${esc(track.artist)}</span></div><button data-uri="${esc(track.uri)}">PLAY NEXT</button></div>`).join('') || '<div class="empty">No playlist tracks available.</div>';
@@ -135,7 +135,7 @@ loadQueue();
 if (!localStorage.getItem('sheetal-guide-v1') && 'speechSynthesis' in window) {
   document.addEventListener('pointerdown', () => {
     localStorage.setItem('sheetal-guide-v1', '1');
-    const guide = new SpeechSynthesisUtterance('शीटल एफएम में आपका स्वागत है। प्ले बटन से रेडियो सुनिए, रिक्वेस्ट अ सॉन्ग से गाना मंगाइए, और कॉल द आर जे से हिंदी आर जे से बात कीजिए।');
+    const guide = new SpeechSynthesisUtterance('शीटल के personal assistant में आपका स्वागत है। प्ले बटन से music सुनिए, और ऊपर Ask Assistant से मदद, planning या music के लिए कहिए।');
     guide.lang = 'hi-IN'; guide.rate = 0.95; window.speechSynthesis.cancel(); window.speechSynthesis.speak(guide);
   }, {once:true, capture:true});
 }

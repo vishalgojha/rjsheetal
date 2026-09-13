@@ -1,9 +1,8 @@
-# Sheetal FM — Live Radio
+# Sheetal Personal Assistant
 
-Mobile-first radio station at **rj.vishalojha.me**. Listeners stream your live show
-and request any song from the Spotify catalog. The installable PWA keeps the live
-player available in the background, with lock-screen play/pause controls and a
-voice-first RJ panel for station commands. Runs on a Hetzner VPS via **Coolify**
+Personal assistant at **rj.vishalojha.me** with private Spotify music, requests,
+memory, and optional voice/text help. The installable PWA keeps the music player
+available in the background, with lock-screen play/pause controls. Runs on a Hetzner VPS via **Coolify**
 (Docker + Traefik + Let's Encrypt, zero config).
 
 ```
@@ -44,7 +43,7 @@ listener ──► rj.vishalojha.me (Hetzner VPS, Coolify)
    |---|---|
    | `SPOTIFY_CLIENT_ID` | your Spotify app client id |
 | `SPOTIFY_CLIENT_SECRET` | your Spotify app client secret |
-| `SPOTIFY_PLAYLIST_ID` | Sheetal FM playlist; defaults to `2JXK0KRt8pLkmUqIPPmmQQ` |
+| `SPOTIFY_PLAYLIST_ID` | Personal playlist; defaults to `2JXK0KRt8pLkmUqIPPmmQQ` |
 | `RJSHEETAL_TOKEN` | a long random shared secret (used by the home DJ) |
 | `RJSHEETAL_DEFAULT_TRACK_URI` | optional opening track; defaults to `spotify:track:3dcSec3fFteTR6QlQ194aI` |
 4. **Storage → Add a volume**: mount `/data` (holds the request queue — survives restarts).

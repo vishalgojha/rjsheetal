@@ -36,8 +36,8 @@ DEFAULT_SEEDED_FILE = os.path.join(DATA_DIR, "default-track-seeded")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
 PORT = int(os.environ.get("PORT") or os.environ.get("RJSHEETAL_PORT") or "8080")
-STATION = os.environ.get("RJSHEETAL_STATION", "Sheetal FM")
-TAGLINE = os.environ.get("RJSHEETAL_TAGLINE", "Sheetal's live radio station")
+STATION = os.environ.get("RJSHEETAL_STATION", "Sheetal")
+TAGLINE = os.environ.get("RJSHEETAL_TAGLINE", "Sheetal's personal assistant")
 MAX_BUF = 512 * 1024
 READ_CHUNK = 32 * 1024
 LIVE_STALE_S = 10
@@ -372,7 +372,7 @@ def rj_tool_call(message):
             low = text.lower()
             break
     status = read_json(AUDIO_FILE, {})
-    current = status.get("title") or "the live Sheetal FM show"
+    current = status.get("title") or "nothing is playing yet"
     ist_now = datetime.datetime.now(datetime.timezone.utc).astimezone(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
 
     if any(word in low for word in ("time", "समय", "कितने बजे", "बज रहे")):
@@ -390,7 +390,7 @@ def rj_tool_call(message):
 
     if any(word in low for word in ("now playing", "playing now", "what song", "what is playing", "what's playing", "current song", "क्या बज")):
         return {"name": "get_now_playing", "result": current}, \
-               f"{LISTENER_NAME}, अभी आप सुन रही हैं {current}, आपके अपने RJ Sheetal के साथ।"
+               f"{LISTENER_NAME}, अभी आप सुन रही हैं {current}."
 
     request_words = ("play ", "request ", "put on ", "add ", "बजा", "बजाओ", "चलाओ", "मंगा", "सुनना है")
     if any(word in low for word in request_words):
@@ -426,7 +426,7 @@ def rj_tool_call(message):
                f"{LISTENER_NAME}, मुझे वह song नहीं मिला। Search box से एक बार फिर try कीजिए।"
 
     return {"name": "station_help", "result": "available: now playing, queue, request a song"}, \
-           f"{LISTENER_NAME}, मैं Sheetal FM का RJ हूँ। आप पूछ सकती हैं अभी क्या बज रहा है, queue में क्या है, या कह सकती हैं कोई गाना बजाओ।"
+           f"{LISTENER_NAME}, मैं आपका personal assistant हूँ। आप समय, अभी क्या बज रहा है, queue, mood, या किसी गाने के बारे में पूछ सकती हैं।"
 
 
 def elevenlabs_speak(text):

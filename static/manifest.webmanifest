@@ -1,7 +1,7 @@
 {
   "name": "Sheetal Personal Assistant",
   "short_name": "Sheetal Assistant",
-  "description": "Sheetal’s personal Hindi/Hinglish assistant with optional Sheetal FM music mode.",
+  "description": "Sheetal’s personal Hindi/Hinglish assistant with private Spotify music.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#211d19",

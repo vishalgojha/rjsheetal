@@ -447,6 +447,10 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/sw.js":
             self._serve_file("sw.js", "application/javascript; charset=utf-8")
+        elif path == "/app.js":
+            self._serve_file("app.js", "application/javascript; charset=utf-8")
+        elif path == "/rj-lazy.js":
+            self._serve_file("rj-lazy.js", "application/javascript; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":

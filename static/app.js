@@ -57,6 +57,7 @@ function loadQueue() {
     }));
   }).catch(() => $('queue').innerHTML = '<div class="empty">Queue temporarily unavailable.</div>');
 }
+window.loadQueue = loadQueue;
 async function requestSong(uri) {
   try { await getJSON('/api/request', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({uri})}, 8000); toast('Added to Sheetal’s queue.'); $('query').value = ''; $('results').innerHTML = ''; loadQueue(); }
   catch (error) { toast(error.name === 'AbortError' ? 'Radio temporarily unavailable.' : (error.message || 'Could not request that song.')); }

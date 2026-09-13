@@ -694,7 +694,10 @@ class Handler(BaseHTTPRequestHandler):
                     for item in q:
                         if item.get("uri") == current_uri and item.get("status") != "done":
                             item["status"] = "done"
-                next_item = next((item for item in q if item.get("status") == "queued" and item.get("source") != "station-default"), None)
+                requested_uri = str(body.get("next_uri") or "")
+                next_item = next((item for item in q if item.get("status") == "queued" and item.get("uri") == requested_uri), None) if requested_uri else None
+                if not next_item:
+                    next_item = next((item for item in q if item.get("status") == "queued" and item.get("source") != "station-default"), None)
                 if next_item:
                     next_item["status"] = "claimed"
                 save_queue(q)

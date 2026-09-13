@@ -76,6 +76,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(view => view.classList.toggle('active', view.dataset.view === name));
   document.querySelectorAll('[data-nav]').forEach(button => button.classList.toggle('active', button.dataset.nav === name));
   if (name === 'queue') loadQueue();
+  if (name === 'rj' && $('voiceToggle') && $('voiceToggle').textContent === 'TALK TO RJ') setTimeout(() => $('voiceToggle').click(), 0);
 }
 document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showView(button.dataset.nav)));
 $('homePlay').addEventListener('click', toggleAudio); $('playerPlay').addEventListener('click', toggleAudio);
@@ -83,3 +84,4 @@ $('muteBtn').addEventListener('click', () => { audio.muted = !audio.muted; $('mu
 audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('pause', () => setPlaying(false)); audio.addEventListener('error', () => { setPlaying(false); toast('Radio temporarily unavailable.'); });
 $('searchButton').addEventListener('click', searchSongs); $('query').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); searchSongs(); } });
 if ('mediaSession' in navigator) for (const action of ['play','pause']) try { navigator.mediaSession.setActionHandler(action, () => action === 'play' ? toggleAudio() : audio.pause()); } catch (_) {}
+refreshStatus();

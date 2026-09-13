@@ -1,6 +1,6 @@
 /* The ElevenLabs client is downloaded only after the listener asks for RJ. */
 (function(){
-  const button = document.getElementById('voiceToggle'), wakeButton = document.getElementById('wakeToggle');
+  const button = document.getElementById('voiceToggle'), topButton = document.getElementById('topRj'), wakeButton = document.getElementById('wakeToggle');
   const status = document.getElementById('rjStatus'), orb = document.getElementById('agentOrb'), title = document.getElementById('agentTitle'), detail = document.getElementById('agentDetail');
   let session = null, wake = true, loading = false;
   function state(a,b,c){ title.textContent=a; detail.textContent=b; orb.className='orb '+(c||''); }
@@ -25,6 +25,7 @@
     loading = false;
   }
   button.textContent='TALK TO RJ'; button.addEventListener('click', async () => { if(session){await session.endSession();session=null;} else await start(); });
+  topButton?.addEventListener('click', async () => { if(session){await session.endSession();session=null;} else await start(); });
   document.addEventListener('sheetal:call-rj', () => { if(!session) start(); });
   wakeButton.addEventListener('click', () => { wake=!wake; wakeButton.textContent=wake?'WAKE: HEY RADIO':'DIRECT TALK'; wakeButton.classList.toggle('off',!wake); if(session)status.textContent=wake?'Wake mode · say “Hey Radio”.':'Direct talk mode enabled.'; });
   // RJ webhook requests are written by the server, so refresh the visible

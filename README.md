@@ -17,9 +17,10 @@ Create a public-repository application from this repository and set:
 | `SPOTIFY_PLAYLIST_ID` | Optional starting playlist |
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS/assistant integration |
 | `ELEVENLABS_AGENT_ID` | Optional agent id override |
-| `COMPOSIO_API_KEY` | Composio project API key for the managed Gmail connection |
-| `COMPOSIO_USER_ID` | Stable Composio user id; use `sheetal` |
-| `COMPOSIO_CALLBACK_URL` | `https://rj.vishalojha.me/api/email/callback` |
+| `NANGO_SECRET_KEY` | Nango secret key with connect-session and proxy access |
+| `NANGO_API_BASE` | Nango API base; use `https://api.nango.dev` |
+| `NANGO_INTEGRATION_ID` | Nango Gmail integration unique key, usually `gmail` |
+| `NANGO_USER_ID` | Stable Nango end-user id; use `sheetal` |
 | `RJSHEETAL_PRIVATE_CODE` | Optional starter PIN; defaults to `0000000` and can be changed in the app |
 | `RJSHEETAL_AGENT_TOKEN` | Secret for protected ElevenLabs assistant and Gmail tools |
 
@@ -41,17 +42,17 @@ browser uses PKCE, so the Spotify client secret never reaches the phone.
 
 ### Gmail setup
 
-Gmail is an optional, read-only personal assistant capability. Create a
-Composio project/API key, enable the Gmail toolkit, and set the Composio
-variables above in Coolify. The callback URL must be exactly
-`https://rj.vishalojha.me/api/email/callback`. On her phone, Sheetal starts
+Gmail is an optional, read-only personal assistant capability. Create a Gmail
+integration in Nango, note its integration unique key, create a scoped Nango
+secret key, and set the Nango variables above in Coolify. On her phone, Sheetal starts
 with the temporary PIN `0000000`, taps **Connect Gmail**, and completes the
 hosted Google consent flow. After unlocking, she can tap **Change private PIN**
 to choose her own 4–12 digit PIN. The changed PIN is persisted in `/data` and
 survives redeployments.
 
-The app creates a restricted Composio session with the read-only
-`GMAIL_FETCH_EMAILS` tool. No Google client secret is needed in Coolify.
+The app opens Nango Connect for Google consent and reads Gmail through Nango’s
+provider proxy. Google access and refresh tokens stay in Nango; no Google client
+secret is needed in Coolify.
 
 The first version only reads message metadata and snippets. Sending, replying,
 archiving, deleting, and calendar changes should be added later with explicit
@@ -60,7 +61,7 @@ confirmation in the assistant.
 For an ElevenLabs custom tool, call `POST /api/agent/email-inbox` with
 `X-RJ-Agent-Token` and a JSON body such as `{"query":"is:unread","limit":8}`.
 The endpoint is protected separately from the mobile browser cookie and reads
-through the same Composio-managed Gmail connection.
+through the same Nango-managed Gmail connection.
 
 Only one Spotify device can play for the account at a time. The main screen
 shows a compact “Playing on” handoff when more than one phone/browser is

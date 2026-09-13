@@ -145,6 +145,32 @@
   connect.addEventListener('click',intercept,true);
   document.querySelectorAll('#homePlay,#playerPlay').forEach(button=>button.addEventListener('click',intercept,true));
   async function playSelectedQueue(uri){if(!deviceId){sessionStorage.setItem('sheetal-pending-play',uri);setStatus('Starting Spotify for this track…');return start()}if(externalDevice&&!player){try{await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});setStatus('Playing selected queue item on '+(deviceStatus?.textContent||'Spotify')+'.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not play queue item.')}return}try{const state=await player.getCurrentState(),currentUri=state?.track_window?.current_track?.uri||'';if(currentUri===uri){await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});return setStatus('This queue item is already on air.')}const r=await fetch('/api/queue/next',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_uri:currentUri,next_uri:uri})}),d=await r.json(),target=d.item?.uri||uri;await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[target]})});setStatus('Playing selected queue item.');window.loadQueue?.()}catch(e){setStatus(e.message||'Could not play queue item.')}}
+  async function assistantMusicControl(parameters={}){
+    const action=String(parameters.action||parameters.music_action||'play_song').toLowerCase().replace(/ /g,'_');
+    if(!deviceId){await refreshDeviceList();}
+    if(!deviceId)throw Error('Open Spotify and start playback once so I can control it.');
+    let uri=String(parameters.query||parameters.song||'').trim();
+    if(action==='play_song'&&!/^spotify:track:/i.test(uri)){
+      if(!uri)throw Error('Tell me which song to play.');
+      const found=await api('/search?q='+encodeURIComponent(uri)+'&type=track&limit=1&market=IN');
+      uri=found.tracks?.items?.[0]?.uri||'';
+      if(!uri)throw Error('I could not find that song on Spotify.');
+    }
+    if(action==='play_song')await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT',body:JSON.stringify({uris:[uri]})});
+    else if(action==='play_playlist')await playPlaylist(parameters.playlist_id);
+    else if(action==='play'||action==='resume')await api('/me/player/play?device_id='+encodeURIComponent(deviceId),{method:'PUT'});
+    else if(action==='pause'||action==='stop')await api('/me/player/pause?device_id='+encodeURIComponent(deviceId),{method:'PUT'});
+    else if(action==='next')await api('/me/player/next?device_id='+encodeURIComponent(deviceId),{method:'POST'});
+    else if(action==='previous')await api('/me/player/previous?device_id='+encodeURIComponent(deviceId),{method:'POST'});
+    else throw Error('Unsupported Spotify action.');
+    await new Promise(resolve=>setTimeout(resolve,700));
+    const state=await api('/me/player');
+    const playing=!!state?.is_playing;
+    if(action==='play_song'&&(!state?.item?.uri||state.item.uri!==uri||!playing))throw Error('Spotify accepted the command but did not start playback.');
+    setStatus(playing?'Spotify is playing.':'Spotify updated.');
+    return {ok:true,verified:action==='play_song'?playing:true,action,title:state?.item?.name||'',artist:state?.item?.artists?.map(a=>a.name).join(', ')||'',device:state?.device?.name||deviceStatus?.textContent||''};
+  }
+  window.sheetalMusicControl=assistantMusicControl;
   document.addEventListener('sheetal:play-uri',event=>playSelectedQueue(event.detail.uri));
   let linkedUri='',linkIndex=0;
   const lifeLinks=[

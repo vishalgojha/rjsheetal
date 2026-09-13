@@ -42,7 +42,7 @@ SHOPPING_FILE = os.path.join(DATA_DIR, "shopping.json")
 PLANS_FILE = os.path.join(DATA_DIR, "plans.json")
 MUSIC_COMMAND_FILE = os.path.join(DATA_DIR, "music-command.json")
 MUSIC_STATE_FILE = os.path.join(DATA_DIR, "music-state.json")
-COMPOSIO_SESSION_FILE = os.path.join(DATA_DIR, "composio-session.json")
+NANGO_CONNECTION_FILE = os.path.join(DATA_DIR, "nango-connection.json")
 PRIVATE_CODE_FILE = os.path.join(DATA_DIR, "assistant-pin.json")
 
 # Coolify sets PORT; default to 8080 for local dev / plain docker runs.
@@ -66,10 +66,10 @@ ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "7qBNUtXRGP0jPi0H4r8
 # used by the one-shot RJ fallback.
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
-COMPOSIO_API_KEY = os.environ.get("COMPOSIO_API_KEY", "").strip()
-COMPOSIO_API_BASE = os.environ.get("COMPOSIO_API_BASE", "https://backend.composio.dev/api/v3.1").rstrip("/")
-COMPOSIO_USER_ID = os.environ.get("COMPOSIO_USER_ID", "sheetal").strip() or "sheetal"
-COMPOSIO_CALLBACK_URL = os.environ.get("COMPOSIO_CALLBACK_URL", "").strip()
+NANGO_SECRET_KEY = os.environ.get("NANGO_SECRET_KEY", "").strip()
+NANGO_API_BASE = os.environ.get("NANGO_API_BASE", "https://api.nango.dev").strip().rstrip("/")
+NANGO_INTEGRATION_ID = os.environ.get("NANGO_INTEGRATION_ID", "gmail").strip() or "gmail"
+NANGO_USER_ID = os.environ.get("NANGO_USER_ID", "sheetal").strip() or "sheetal"
 # Email is deliberately disabled until the public app has an owner-only gate.
 # Set this to a private passphrase in Coolify; never put it in the frontend.
 RJSHEETAL_PRIVATE_CODE = os.environ.get("RJSHEETAL_PRIVATE_CODE", "").strip()
@@ -601,16 +601,16 @@ def agent_action(action, body):
     return {"ok": False, "verified": False, "error": "unsupported assistant action"}
 
 
-# ---------------------------------------------------------------- email / Composio
+# ---------------------------------------------------------------- email / Nango + Gmail
 EMAIL_COOKIE = "rj_email_access"
 
 
-class ComposioNotConnected(RuntimeError):
+class GmailNotConnected(RuntimeError):
     pass
 
 
 def email_configured():
-    return bool(COMPOSIO_API_KEY and current_private_code())
+    return bool(NANGO_SECRET_KEY and NANGO_INTEGRATION_ID and current_private_code())
 
 
 def current_private_code():
@@ -650,128 +650,98 @@ def email_authorized(handler):
     return bool(expected and secrets.compare_digest(request_cookie(handler, EMAIL_COOKIE), expected))
 
 
-def composio_session_record():
-    data = read_json(COMPOSIO_SESSION_FILE, {})
+def nango_connection_record():
+    data = read_json(NANGO_CONNECTION_FILE, {})
     return data if isinstance(data, dict) else {}
 
 
-def save_composio_session(data):
+def save_nango_connection(data):
     os.makedirs(DATA_DIR, exist_ok=True)
-    write_json(COMPOSIO_SESSION_FILE, data)
+    write_json(NANGO_CONNECTION_FILE, data)
     try:
-        os.chmod(COMPOSIO_SESSION_FILE, 0o600)
+        os.chmod(NANGO_CONNECTION_FILE, 0o600)
     except OSError:
         pass
 
 
-def composio_request(method, path, payload=None):
-    if not COMPOSIO_API_KEY:
-        raise RuntimeError("Composio is not configured")
+def nango_request(method, path, payload=None, headers=None):
+    if not NANGO_SECRET_KEY:
+        raise RuntimeError("Nango is not configured")
+    url = NANGO_API_BASE + "/" + path.lstrip("/")
     body = None
-    headers = {
-        "x-api-key": COMPOSIO_API_KEY,
-        "Accept": "application/json",
-    }
+    request_headers = {"Authorization": "Bearer " + NANGO_SECRET_KEY, "Accept": "application/json"}
     if payload is not None:
-        body = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(COMPOSIO_API_BASE + path, data=body, method=method, headers=headers)
-    with urllib.request.urlopen(req, timeout=18) as response:
-        return json.loads(response.read() or b"{}")
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        request_headers["Content-Type"] = "application/json"
+    if headers:
+        request_headers.update(headers)
+    request = urllib.request.Request(url, data=body, method=method.upper(), headers=request_headers)
+    with urllib.request.urlopen(request, timeout=18) as response:
+        raw = response.read()
+        return json.loads(raw or b"{}")
 
 
-def composio_callback_url(handler):
-    if COMPOSIO_CALLBACK_URL:
-        return COMPOSIO_CALLBACK_URL
-    proto = (handler.headers.get("X-Forwarded-Proto") or "https").split(",")[0].strip()
-    host = handler.headers.get("X-Forwarded-Host") or handler.headers.get("Host", "")
-    return f"{proto}://{host}/api/email/callback"
+def nango_connections():
+    params = urllib.parse.urlencode({"tags[end_user_id]": NANGO_USER_ID, "limit": 20})
+    result = nango_request("GET", "/connections?" + params)
+    connections = result.get("connections") if isinstance(result, dict) else []
+    return connections if isinstance(connections, list) else []
 
 
-def composio_session(handler, create=False):
-    record = composio_session_record()
-    session_id = str(record.get("session_id") or "")
-    if session_id:
-        try:
-            return composio_request("GET", "/tool_router/session/" + urllib.parse.quote(session_id, safe=""))
-        except urllib.error.HTTPError as exc:
-            if exc.code != 404:
-                raise
-    if not create:
-        return None
-    data = composio_request("POST", "/tool_router/session", {
-        "user_id": COMPOSIO_USER_ID,
-        "toolkits": {"enable": ["gmail"]},
-        "tools": {"gmail": {"enable": ["GMAIL_FETCH_EMAILS"]}},
-        "tags": {"enable": ["readOnlyHint"], "disable": ["destructiveHint"]},
-        "workbench": {"enable": False},
-        "manage_connections": {
-            "enabled": True,
-            "callback_url": composio_callback_url(handler),
-            "enable_wait_for_connections": False,
-        },
-    })
-    session_id = str(data.get("session_id") or "")
-    if not session_id:
-        raise RuntimeError("Composio did not return a session")
-    save_composio_session({"session_id": session_id, "user_id": COMPOSIO_USER_ID, "updated_at": timestamp()})
-    return data
-
-
-def connected_gmail_accounts(session):
-    config = (session or {}).get("config") or {}
-    accounts = config.get("all_connected_accounts") or config.get("connected_accounts") or {}
-    if not isinstance(accounts, dict):
-        return []
-    result = []
-    for key, value in accounts.items():
-        if "gmail" not in str(key).lower():
+def nango_connection_id():
+    stored = nango_connection_record()
+    stored_id = str(stored.get("connection_id") or "").strip()
+    if stored_id:
+        return stored_id
+    for connection in nango_connections():
+        if not isinstance(connection, dict):
             continue
-        if isinstance(value, list):
-            result.extend(str(item) for item in value if item)
-        elif value:
-            result.append(str(value))
-    return result
+        provider = str(connection.get("provider_config_key") or connection.get("providerConfigKey") or "").strip()
+        connection_id = str(connection.get("connection_id") or connection.get("connectionId") or "").strip()
+        if provider == NANGO_INTEGRATION_ID and connection_id:
+            save_nango_connection({"connection_id": connection_id, "provider": provider,
+                                   "user_id": NANGO_USER_ID, "updated_at": timestamp()})
+            return connection_id
+    return ""
 
 
 def email_status(handler):
-    if not COMPOSIO_API_KEY:
+    if not NANGO_SECRET_KEY or not NANGO_INTEGRATION_ID:
         return {"configured": False, "authorized": email_authorized(handler), "connected": False,
-                "email": "", "setup_required": True, "provider": "composio"}
+                "email": "", "setup_required": True, "provider": "nango"}
     authorized = email_authorized(handler)
     if not authorized:
         return {"configured": True, "authorized": False, "connected": False,
-                "email": "", "setup_required": False, "provider": "composio"}
+                "email": "", "setup_required": False, "provider": "nango"}
     try:
-        session = composio_session(handler, create=True)
-        accounts = connected_gmail_accounts(session)
-        return {"configured": True, "authorized": True, "connected": bool(accounts),
-                "email": "", "account_count": len(accounts), "setup_required": False, "provider": "composio"}
+        connection_id = nango_connection_id()
+    except urllib.error.HTTPError as exc:
+        log(f"nango status error: HTTP {exc.code}")
+        return {"configured": True, "authorized": True, "connected": False, "email": "",
+                "setup_required": False, "provider": "nango",
+                "error": "Nango could not check the Gmail connection. Verify the Nango key and scopes."}
     except Exception as exc:
-        log(f"composio status error: {exc!r}")
-        error = "Composio is temporarily unavailable"
-        if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
-            error = "Composio rejected its server key. Update COMPOSIO_API_KEY in Coolify."
-        return {"configured": True, "authorized": True, "connected": False,
-                "email": "", "setup_required": False, "provider": "composio",
-                "error": error}
+        log(f"nango status error: {exc!r}")
+        return {"configured": True, "authorized": True, "connected": False, "email": "",
+                "setup_required": False, "provider": "nango",
+                "error": "Nango is temporarily unavailable."}
+    return {"configured": True, "authorized": True, "connected": bool(connection_id),
+            "email": "", "account_count": 1 if connection_id else 0,
+            "setup_required": False, "provider": "nango"}
 
 
 def email_connect_url(handler):
-    session = composio_session(handler, create=True)
-    session_id = str((session or {}).get("session_id") or composio_session_record().get("session_id") or "")
-    if not session_id:
-        raise RuntimeError("Composio session is unavailable")
-    linked = composio_request("POST", "/tool_router/session/" + urllib.parse.quote(session_id, safe="") + "/link", {
-        "toolkit": "gmail",
-        "alias": "Sheetal Gmail",
-        "callback_url": composio_callback_url(handler),
+    if not NANGO_SECRET_KEY or not NANGO_INTEGRATION_ID:
+        raise RuntimeError("Nango credentials are not configured")
+    result = nango_request("POST", "/connect/sessions", {
+        "tags": {"end_user_id": NANGO_USER_ID, "end_user_display_name": "Sheetal"},
+        "allowed_integrations": [NANGO_INTEGRATION_ID],
     })
-    redirect_url = str(linked.get("redirect_url") or "")
-    if not redirect_url:
-        raise RuntimeError("Composio did not return a connection link")
-    return redirect_url
-
+    data = result.get("data") if isinstance(result, dict) else {}
+    link = str((data or {}).get("connect_link") or "").strip()
+    if not link:
+        raise RuntimeError("Nango did not return a connect link")
+    return link
 
 def normalize_email_messages(raw):
     payload = raw.get("data", raw) if isinstance(raw, dict) else raw
@@ -807,19 +777,32 @@ def normalize_email_messages(raw):
 
 
 def gmail_messages(handler, query="", limit=8):
-    session = composio_session(handler, create=True)
-    accounts = connected_gmail_accounts(session)
-    if not accounts:
-        raise ComposioNotConnected("connect Gmail first")
-    session_id = str((session or {}).get("session_id") or "")
-    args = {"max_results": max(1, min(safe_int(limit, 8), 20))}
+    connection_id = nango_connection_id()
+    if not connection_id:
+        raise GmailNotConnected("connect Gmail first")
+    max_results = max(1, min(safe_int(limit, 8), 20))
+    params = {"maxResults": max_results}
     if clean_text(query, 180):
-        args["query"] = clean_text(query, 180)
-    raw = composio_request("POST", "/tool_router/session/" + urllib.parse.quote(session_id, safe="") + "/execute", {
-        "tool_slug": "GMAIL_FETCH_EMAILS",
-        "arguments": args,
-    })
-    return normalize_email_messages(raw)
+        params["q"] = clean_text(query, 180)
+    listing = nango_request("GET", "/proxy/gmail/v1/users/me/messages?" + urllib.parse.urlencode(params, doseq=True),
+                            headers={"Provider-Config-Key": NANGO_INTEGRATION_ID, "Connection-Id": connection_id})
+    output = []
+    for item in (listing.get("messages") or [])[:max_results]:
+        message = nango_request("GET", "/proxy/gmail/v1/users/me/messages/" + urllib.parse.quote(str(item.get("id") or "")) + "?" + urllib.parse.urlencode({
+            "format": "metadata", "metadataHeaders": ["From", "Subject", "Date"],
+        }, doseq=True), headers={"Provider-Config-Key": NANGO_INTEGRATION_ID, "Connection-Id": connection_id})
+        headers = {str(x.get("name", "")).lower(): str(x.get("value", "")) for x in (message.get("payload", {}).get("headers") or [])}
+        labels = message.get("labelIds") or []
+        output.append({
+            "id": str(message.get("id") or item.get("id") or ""),
+            "thread_id": str(message.get("threadId") or ""),
+            "from": clean_text(headers.get("from", ""), 240),
+            "subject": clean_text(headers.get("subject", "(no subject)"), 240),
+            "date": clean_text(headers.get("date", ""), 100),
+            "snippet": clean_text(message.get("snippet", ""), 300),
+            "unread": "UNREAD" in labels,
+        })
+    return output
 
 
 # ---------------------------------------------------------------- spotify
@@ -1216,11 +1199,13 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     self._redirect(email_connect_url(self))
                 except Exception as exc:
-                    log(f"composio connect error: {exc!r}")
-                    self._json(502, {"ok": False, "error": "Gmail connection is temporarily unavailable"})
+                    log(f"nango connect error: {exc!r}")
+                    error = "Gmail connection is temporarily unavailable"
+                    if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
+                        error = "Nango rejected the configured secret key. Update NANGO_SECRET_KEY in Coolify."
+                    self._json(502, {"ok": False, "error": error})
         elif path == "/api/email/callback":
-            # Composio completes the provider OAuth flow and returns here. The
-            # hosted connection page is responsible for the actual callback.
+            # Nango Connect completes the provider OAuth flow in its hosted UI.
             self._redirect("/?email=connected")
         elif path == "/api/email/inbox":
             if not email_authorized(self):
@@ -1232,7 +1217,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 self._json(200, {"ok": True, "connected": True, "email": "",
                                  "messages": gmail_messages(self, query, limit)})
-            except ComposioNotConnected:
+            except GmailNotConnected:
                 self._json(409, {"ok": False, "connected": False, "error": "connect Gmail first"})
             except Exception as exc:
                 log(f"gmail inbox error: {exc!r}")
@@ -1369,7 +1354,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(403, {"ok": False, "error": "unlock the personal assistant first"})
                 return
             try:
-                os.remove(COMPOSIO_SESSION_FILE)
+                os.remove(NANGO_CONNECTION_FILE)
             except FileNotFoundError:
                 pass
             self._send(200, json.dumps({"ok": True, "message": "Local Gmail session cleared"}), extra={
@@ -1519,16 +1504,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
             query = body.get("q") or body.get("query") or ""
             try:
-                session = composio_session(self, create=True)
-                if not connected_gmail_accounts(session):
-                    self._json(409, {"ok": False, "connected": False, "error": "Sheetal needs to connect Gmail first"})
-                    return
                 self._json(200, {"ok": True, "connected": True, "email": "",
                                  "messages": gmail_messages(self, query, body.get("limit", 8))})
-            except ComposioNotConnected:
+            except GmailNotConnected:
                 self._json(409, {"ok": False, "connected": False, "error": "Sheetal needs to connect Gmail first"})
             except Exception as exc:
-                log(f"agent Composio Gmail error: {exc!r}")
+                log(f"agent Nango Gmail error: {exc!r}")
                 self._json(502, {"ok": False, "error": "Gmail is temporarily unavailable."})
         elif path == "/api/request":
             ok, msg = ok_request(self._client_ip())

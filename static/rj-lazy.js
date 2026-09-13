@@ -60,7 +60,15 @@
     return null;
   }
 
-  function prepareAppAction(parameters) {
+  async function prepareAppAction(parameters) {
+    if (String(parameters?.app || '').trim().toLowerCase() === 'spotify' && window.sheetalMusicControl) {
+      try {
+        const result = await window.sheetalMusicControl({ action: 'play_song', query: parameters?.target || parameters?.text || '' });
+        if (result?.ok) return `Playing ${result.title || 'the requested song'} on ${result.device || 'Spotify'}. Playback was verified.`;
+      } catch (error) {
+        console.info('Direct Spotify playback unavailable; preparing handoff.', error);
+      }
+    }
     const action = appTarget(parameters?.app, parameters?.target, parameters?.text, parameters?.phone);
     if (!action) return 'I could not prepare that app action. I need an app name and a valid target.';
     const panel = document.getElementById('assistantActions');

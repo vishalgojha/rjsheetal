@@ -20,6 +20,60 @@
   let loading = false;
   let wake = true;
 
+  // Client tools run inside Sheetal's phone/browser. The agent itself runs on
+  // ElevenLabs' infrastructure, so it cannot click an installed app directly.
+  // We prepare a safe, user-tapped handoff instead.
+  function appTarget(app, target, text, phone) {
+    const name = String(app || '').trim().toLowerCase();
+    const value = String(target || '').trim();
+    const message = String(text || '').trim();
+    if (name === 'spotify') {
+      if (/^https:\/\/open\.spotify\.com\//i.test(value)) return { url: value, label: 'Open Spotify' };
+      if (/^spotify:/i.test(value)) return { url: value, label: 'Open Spotify' };
+      const query = value || message;
+      if (!query) return null;
+      return { url: 'https://open.spotify.com/search/' + encodeURIComponent(query), label: 'Open Spotify' };
+    }
+    if (name === 'whatsapp') {
+      const digits = String(phone || '').replace(/[^0-9]/g, '');
+      if (digits && !/^\d{7,15}$/.test(digits)) return null;
+      const url = digits ? 'https://wa.me/' + digits : 'https://wa.me/';
+      return { url: url + (message ? '?text=' + encodeURIComponent(message) : ''), label: message ? 'Open WhatsApp draft' : 'Open WhatsApp' };
+    }
+    if (name === 'phone' || name === 'call') {
+      const digits = String(phone || value).replace(/[^0-9+]/g, '');
+      if (!/^\+?[0-9]{7,15}$/.test(digits)) return null;
+      return { url: 'tel:' + digits, label: 'Call ' + digits };
+    }
+    if (name === 'maps' || name === 'map') {
+      const query = value || message;
+      if (!query) return null;
+      return { url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query), label: 'Open Maps' };
+    }
+    return null;
+  }
+
+  function prepareAppAction(parameters) {
+    const action = appTarget(parameters?.app, parameters?.target, parameters?.text, parameters?.phone);
+    if (!action) return 'I could not prepare that app action. I need an app name and a valid target.';
+    const panel = document.getElementById('assistantActions');
+    if (!panel) return 'The app action is ready, but the action panel is unavailable.';
+    const title = document.getElementById('assistantActionTitle');
+    const detail = document.getElementById('assistantActionDetail');
+    const button = document.getElementById('assistantActionButton');
+    const dismiss = document.getElementById('assistantActionDismiss');
+    if (title) title.textContent = action.label;
+    if (detail) detail.textContent = parameters?.text ? 'Prepared on this phone. Review it before sending.' : 'Prepared on this phone. Tap to continue.';
+    if (button) {
+      button.textContent = action.label;
+      button.onclick = () => { window.location.href = action.url; };
+    }
+    if (dismiss) dismiss.onclick = () => { panel.hidden = true; };
+    panel.hidden = false;
+    panel.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    return 'The action is prepared on Sheetal’s phone. Tell her to tap the visible action button to continue. Do not claim that the other app opened or that a message was sent until she confirms it.';
+  }
+
   function state(nextTitle, nextDetail, mode) {
     if (title) title.textContent = nextTitle;
     if (detail) detail.textContent = nextDetail;
@@ -60,6 +114,9 @@
       session = await Conversation.startSession({
         agentId: AGENT_ID,
         connectionType: kind === 'voice' ? 'webrtc' : 'websocket',
+        clientTools: {
+          open_external_app: prepareAppAction,
+        },
         onConnect() {
           voiceButton.disabled = false;
           voiceButton.textContent = 'VOICE ON';

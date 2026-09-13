@@ -559,6 +559,48 @@ def agent_music_control(action, query="", playlist_id="", position_ms=0):
     return issue_music_command(action, payload)
 
 
+def agent_action(action, body):
+    """Single deterministic webhook surface for the assistant's safe actions."""
+    name = clean_text(action, 50).lower().replace("-", "_").replace(" ", "_")
+    if name in ("now_playing", "get_now_playing", "music_state"):
+        state = music_state()
+        return {"ok": True, "verified": True, "action": "now_playing", "title": state.get("title", ""),
+                "artist": state.get("artist", ""), "paused": state.get("paused", True),
+                "device": state.get("device", ""), "message": "Live music state returned."}
+    if name in ("queue", "get_queue"):
+        items = [r for r in load_queue() if r.get("status") != "done"]
+        return {"ok": True, "verified": True, "action": "queue", "items": [
+            {"song": r.get("name", ""), "artist": r.get("artist", ""), "status": r.get("status", "queued")}
+            for r in items[:8]
+        ]}
+    if name in ("music", "music_control", "spotify"):
+        result = agent_music_control(body.get("music_action") or body.get("command") or body.get("action_name"),
+                                     body.get("query") or body.get("song"), body.get("playlist_id"), body.get("position_ms", 0))
+        result["verified"] = bool(result.get("ok"))
+        if result.get("ok"):
+            result["message"] = "The command was accepted for the connected browser on the selected device."
+        return result
+    if name in ("create_task", "task"):
+        item = create_task(body.get("title") or body.get("task"), body.get("due") or body.get("reminder"), body.get("priority"), body.get("notes"))
+        return {"ok": bool(item), "verified": bool(item), "action": "create_task", "task": item,
+                **({} if item else {"error": "task title required"})}
+    if name in ("create_note", "note"):
+        item = create_note(body.get("title"), body.get("body") or body.get("text"), body.get("tags"))
+        return {"ok": bool(item), "verified": bool(item), "action": "create_note", "note": item,
+                **({} if item else {"error": "note body required"})}
+    if name in ("add_shopping", "shopping"):
+        item = add_shopping_item(body.get("item") or body.get("name"), body.get("quantity"), body.get("category"))
+        return {"ok": bool(item), "verified": bool(item), "action": "add_shopping", "item": item,
+                **({} if item else {"error": "shopping item required"})}
+    if name in ("remember_preference", "preference", "remember"):
+        preference = clean_text(body.get("preference") or body.get("taste") or body.get("text"), 300)
+        if not preference:
+            return {"ok": False, "verified": False, "error": "preference required"}
+        record_memory({"type": "taste" if body.get("taste") else "preference", "preference": preference, "category": body.get("category")})
+        return {"ok": True, "verified": True, "action": "remember_preference", "remembered": preference}
+    return {"ok": False, "verified": False, "error": "unsupported assistant action"}
+
+
 # ---------------------------------------------------------------- email / Composio
 EMAIL_COOKIE = "rj_email_access"
 
@@ -1454,6 +1496,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(429, {"ok": False, "error": msg})
                 return
             self._json(200, agent_music_control(body.get("action"), body.get("query"), body.get("playlist_id"), body.get("position_ms", 0)))
+        elif path == "/api/agent/action":
+            if not self._agent_authed():
+                self._json(403, {"ok": False, "verified": False, "error": "assistant action is not authorized"})
+                return
+            ok, msg = ok_agent_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "verified": False, "error": msg})
+                return
+            result = agent_action(body.get("action") or body.get("name"), body)
+            self._json(200, result)
         elif path == "/api/agent/email-inbox":
             if not self._agent_authed():
                 self._json(403, {"ok": False, "error": "email assistant tool is not authorized"})

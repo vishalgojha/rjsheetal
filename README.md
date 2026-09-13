@@ -83,6 +83,13 @@ The ElevenLabs agent uses webhook tools backed by this app to:
 - read a protected Gmail inbox and search it with Gmail query syntax after
   Sheetal explicitly connects her account;
 
+The agent can also use the protected `POST /api/agent/action` router for
+verified music state, queue, tasks, notes, shopping, and preference actions.
+Mobile app handoffs use the ElevenLabs client tool `open_external_app`: the
+PWA prepares a Spotify, WhatsApp, phone, or Maps action and Sheetal taps the
+visible button. The assistant must never claim an app opened or a message was
+sent until the phone confirms it.
+
 These are persistent in-app records. They are not phone notifications or
 external bookings unless a separate integration is added.
 

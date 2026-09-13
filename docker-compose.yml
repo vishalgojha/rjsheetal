@@ -1,0 +1,30 @@
+services:
+  rjsheetal:
+    build:
+      context: .
+    image: ghcr.io/vishalgojha/rjsheetal:main
+    container_name: rjsheetal
+    restart: unless-stopped
+    ports:
+      # host 8080 -> container 8080 (Coolify/Traefik proxies to this)
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      RJSHEETAL_DATA: /data
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      RJSHEETAL_TOKEN: ${RJSHEETAL_TOKEN:-}
+      RJSHEETAL_STATION: ${RJSHEETAL_STATION:-RJ Sheetal}
+      RJSHEETAL_TAGLINE: ${RJSHEETAL_TAGLINE:-your favourite radio jockey}
+      RJSHEETAL_MAX_QUEUE: ${RJSHEETAL_MAX_QUEUE:-8}
+    volumes:
+      - rjsheetal-data:/data
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  rjsheetal-data:

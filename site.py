@@ -41,6 +41,7 @@ READ_CHUNK = 32 * 1024
 MAX_QUEUE = int(os.environ.get("RJSHEETAL_MAX_QUEUE", "8"))
 RATE_WINDOW_S = int(os.environ.get("RJSHEETAL_RATE_WINDOW", "600"))
 RATE_LIMIT = int(os.environ.get("RJSHEETAL_RATE_LIMIT", "3"))
+SPOTIFY_TIMEOUT_S = float(os.environ.get("RJSHEETAL_SPOTIFY_TIMEOUT", "6"))
 
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
@@ -186,7 +187,7 @@ def spotify_token():
         "https://accounts.spotify.com/api/token", data=body,
         headers={"Authorization": "Basic " + spotify_b64(f"{CREDS['cid']}:{CREDS['secret']}"),
                  "Content-Type": "application/x-www-form-urlencoded"})
-    with urllib.request.urlopen(req, timeout=15) as r:
+    with urllib.request.urlopen(req, timeout=SPOTIFY_TIMEOUT_S) as r:
         d = json.loads(r.read())
     t["value"] = d["access_token"]
     t["expires"] = time.time() + d["expires_in"] - 30
@@ -197,7 +198,7 @@ def spotify_get(path):
     req = urllib.request.Request(
         "https://api.spotify.com/v1" + path,
         headers={"Authorization": "Bearer " + spotify_token()})
-    with urllib.request.urlopen(req, timeout=15) as r:
+    with urllib.request.urlopen(req, timeout=SPOTIFY_TIMEOUT_S) as r:
         return json.loads(r.read())
 
 
@@ -443,7 +444,13 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/search":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
-            self._json(200, {"results": search_tracks(q[:200])})
+            try:
+                self._json(200, {"results": search_tracks(q[:200])})
+            except (TimeoutError, socket.timeout):
+                self._json(504, {"results": [], "error": "Spotify search timed out"})
+            except Exception as e:
+                log(f"search error: {e!r}")
+                self._json(502, {"results": [], "error": "Spotify search unavailable"})
         elif path == "/api/playlist":
             try:
                 self._json(200, {"configured": bool(os.environ.get("SPOTIFY_PLAYLIST_ID")), "results": playlist_tracks()})

@@ -58,6 +58,19 @@ LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "spotify:track:3dcSec3fFteTR6QlQ194aI").strip()
 SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip() or "2JXK0KRt8pLkmUqIPPmmQQ"
 
+MOOD_QUERIES = {
+    "happy": "Hindi upbeat feel good",
+    "happier": "Hindi upbeat feel good",
+    "sad": "Hindi soft emotional",
+    "soft": "Hindi soft romantic acoustic",
+    "romantic": "Hindi romantic",
+    "focus": "Hindi instrumental chill",
+    "calm": "Hindi calm acoustic",
+    "travel": "Hindi road trip upbeat",
+    "energetic": "Hindi dance workout",
+    "sleep": "Hindi relaxing acoustic",
+}
+
 
 def log(msg):
     print(f"[site] {msg}", file=sys.stderr, flush=True)
@@ -462,6 +475,43 @@ def agent_request_song(query):
     return {"ok": True, "queued": True, "song": track["name"], "artist": track["artist"]}
 
 
+def agent_set_mood(mood):
+    """Turn a plain-language mood into a few Spotify queue entries."""
+    raw = str(mood or "").strip().lower()[:80]
+    key = next((k for k in MOOD_QUERIES if k in raw), raw)
+    query = MOOD_QUERIES.get(key)
+    if not query:
+        return {"ok": False, "error": "mood not recognised", "supported": sorted(MOOD_QUERIES)}
+    try:
+        tracks = search_tracks(query, limit=3)
+    except Exception as exc:
+        log(f"mood search error: {exc!r}")
+        return {"ok": False, "error": "Spotify mood search unavailable"}
+    if not tracks:
+        return {"ok": False, "error": "no Spotify tracks found for that mood"}
+    added = []
+    with QUEUE_LOCK:
+        q = load_queue()
+        active = {r.get("uri") for r in q if r.get("status") != "done"}
+        for track in tracks:
+            if len(active) >= MAX_QUEUE:
+                break
+            if not track.get("uri") or track["uri"] in active:
+                continue
+            item = {
+                "id": base64.b64encode(os.urandom(6)).decode().replace("+", "").replace("/", ""),
+                "uri": track["uri"], "name": track["name"], "artist": track["artist"],
+                "album": track["album"], "art": track["art"], "dur_ms": track["dur_ms"],
+                "ts": int(time.time()), "status": "queued", "source": "mood",
+            }
+            q.append(item)
+            active.add(track["uri"])
+            added.append({"song": track["name"], "artist": track["artist"]})
+        save_queue(q)
+    record_memory({"type": "mood", "mood": key, "text": f"Sheetal asked for {key} music"})
+    return {"ok": True, "mood": key, "query": query, "queued": added}
+
+
 # ---------------------------------------------------------------- http
 class Handler(BaseHTTPRequestHandler):
     server_version = "RJSheetal/1.0"
@@ -653,6 +703,12 @@ class Handler(BaseHTTPRequestHandler):
                 return
             query = body.get("song") or body.get("query") or body.get("title") or ""
             self._json(200, agent_request_song(query))
+        elif path == "/api/agent/mood":
+            ok, msg = ok_request(self._client_ip())
+            if not ok:
+                self._json(429, {"ok": False, "error": msg})
+                return
+            self._json(200, agent_set_mood(body.get("mood") or body.get("feeling") or ""))
         elif path == "/api/request":
             ok, msg = ok_request(self._client_ip())
             if not ok:
@@ -816,7 +872,13 @@ def main():
         log("WARNING: no SPOTIFY_CLIENT_ID/SECRET set — song requests disabled")
     os.makedirs(STATIC, exist_ok=True)
     os.makedirs(DATA_DIR, exist_ok=True)
-    seed_default_track()
+    # The browser now starts from the selected Spotify playlist at a random
+    # position. Do not seed a hard-coded opening song into the persistent queue.
+    with QUEUE_LOCK:
+        queue = load_queue()
+        cleaned = [item for item in queue if item.get("source") != "station-default"]
+        if len(cleaned) != len(queue):
+            save_queue(cleaned)
     httpd = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     log(f"rj.sheetal on 0.0.0.0:{PORT}  (token {'set' if SHARED_TOKEN else 'UNSET'})")
     try:

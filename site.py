@@ -45,7 +45,9 @@ RATE_LIMIT = int(os.environ.get("RJSHEETAL_RATE_LIMIT", "3"))
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "hRKCLdG8a4wR6WPgMGQr")
-ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_v3_conversational")
+# v3 conversational is for the live agent session, not the REST TTS endpoint
+# used by the one-shot RJ fallback.
+ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")
 ELEVENLABS_AGENT_ID = os.environ.get("ELEVENLABS_AGENT_ID", "")
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 

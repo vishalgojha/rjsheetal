@@ -681,6 +681,19 @@ class Handler(BaseHTTPRequestHandler):
                 q.append(item)
                 save_queue(q)
             self._json(200, {"ok": True, "item": item})
+        elif path == "/api/queue/next":
+            current_uri = str(body.get("current_uri") or "")
+            with QUEUE_LOCK:
+                q = load_queue()
+                if current_uri:
+                    for item in q:
+                        if item.get("uri") == current_uri and item.get("status") != "done":
+                            item["status"] = "done"
+                next_item = next((item for item in q if item.get("status") == "queued" and item.get("source") != "station-default"), None)
+                if next_item:
+                    next_item["status"] = "claimed"
+                save_queue(q)
+            self._json(200, {"item": next_item})
         elif path == "/api/rj":
             message = str(body.get("message") or "")[:500]
             if not message:

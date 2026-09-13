@@ -21,7 +21,7 @@ Create a public-repository application from this repository and set:
 | `COMPOSIO_USER_ID` | Stable Composio user id; use `sheetal` |
 | `COMPOSIO_CALLBACK_URL` | `https://rj.vishalojha.me/api/email/callback` |
 | `RJSHEETAL_PRIVATE_CODE` | Optional starter PIN; defaults to `0000000` and can be changed in the app |
-| `RJSHEETAL_AGENT_TOKEN` | Optional secret for a protected ElevenLabs Gmail tool |
+| `RJSHEETAL_AGENT_TOKEN` | Secret for protected ElevenLabs assistant and Gmail tools |
 
 Add a persistent Coolify volume mounted at `/data`. This stores Sheetal’s
 tasks, notes, shopping list, plans, preferences, music state, and request

@@ -91,6 +91,15 @@ function showView(name) {
   if (name === 'queue') loadQueue();
 }
 document.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => showView(button.dataset.nav)));
+document.querySelectorAll('.quick[data-nav]').forEach(button => button.addEventListener('click', () => {
+  const target = document.querySelector(`.view[data-view="${button.dataset.nav}"]`);
+  if (!target) return;
+  target.scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(() => {
+    const control = button.dataset.nav === 'search' ? $('query') : $('voiceToggle');
+    control?.focus({preventScroll:true});
+  }, 350);
+}));
 $('homePlay').addEventListener('click', toggleAudio); $('playerPlay').addEventListener('click', toggleAudio);
 $('muteBtn').addEventListener('click', () => { audio.muted = !audio.muted; $('muteBtn').style.color = audio.muted ? 'var(--orange)' : ''; });
 audio.addEventListener('play', () => setPlaying(true)); audio.addEventListener('pause', () => setPlaying(false)); audio.addEventListener('error', () => { setPlaying(false); toast('Radio temporarily unavailable.'); });

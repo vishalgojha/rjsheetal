@@ -45,7 +45,7 @@ SPOTIFY_TIMEOUT_S = float(os.environ.get("RJSHEETAL_SPOTIFY_TIMEOUT", "6"))
 
 SHARED_TOKEN = os.environ.get("RJSHEETAL_TOKEN", "")
 ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
-ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "hRKCLdG8a4wR6WPgMGQr")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "7qBNUtXRGP0jPi0H4r8k")
 # v3 conversational is for the live agent session, not the REST TTS endpoint
 # used by the one-shot RJ fallback.
 ELEVENLABS_MODEL_ID = os.environ.get("ELEVENLABS_MODEL_ID", "eleven_multilingual_v2")

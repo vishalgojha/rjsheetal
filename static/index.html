@@ -202,6 +202,68 @@ h1,h2,h3{color:#f4eadc}
     .app { background:rgba(255,255,255,.78) !important; border-radius:0; box-shadow:none; }
     .assistant-command { border-radius:18px !important; }
   }
+</style>
+<style>
+  /* Desktop home: use named areas so sparse cards never create a large empty
+     implicit grid row. The mobile one-column surface keeps its existing flow. */
+  @media (min-width:980px) {
+    .view[data-view="home"] {
+      display:grid !important;
+      grid-template-columns:minmax(0,1.22fr) minmax(360px,.78fr) !important;
+      grid-template-areas:
+        "eyebrow eyebrow"
+        "title title"
+        "sub sub"
+        "live email"
+        "quick-head now-head"
+        "quick now"
+        "quick connection"
+        "quick device";
+      column-gap:28px !important;
+      row-gap:0 !important;
+      align-items:start !important;
+    }
+    .view[data-view="home"] > .eyebrow { grid-area:eyebrow !important; }
+    .view[data-view="home"] > h1 { grid-area:title !important; }
+    .view[data-view="home"] > .sub { grid-area:sub !important; }
+    .view[data-view="home"] > .live-card {
+      grid-area:live !important;
+      min-height:0 !important;
+      margin-top:16px !important;
+    }
+    .view[data-view="home"] > #emailPanel {
+      grid-area:email !important;
+      margin-top:16px !important;
+    }
+    .view[data-view="home"] > .section-head:has(+ .now-card) {
+      grid-area:now-head !important;
+      margin-top:22px !important;
+    }
+    .view[data-view="home"] > .now-card {
+      grid-area:now !important;
+      min-height:0 !important;
+    }
+    .view[data-view="home"] > .music-connection {
+      grid-area:connection !important;
+      min-width:0;
+    }
+    .view[data-view="home"] > .device-handoff {
+      grid-area:device !important;
+      min-width:0;
+    }
+    .view[data-view="home"] > .section-head:has(+ .quick-grid) {
+      grid-area:quick-head !important;
+      margin-top:22px !important;
+    }
+    .view[data-view="home"] > .quick-grid {
+      grid-area:quick !important;
+      align-self:start !important;
+    }
+    .view[data-view="home"] > .live-card h2 { font-size:22px; }
+    .view[data-view="home"] > .live-card .song { max-width:100%; }
+    .view[data-view="home"] > .music-connection small,
+    .view[data-view="home"] > .device-handoff small { min-width:0; }
+  }
 </style></head>
 <body><main class="app"><header class="topbar"><div class="hello"><div class="avatar">S</div><div><small>Good evening</small><strong>Hi, Sheetal</strong></div></div><div class="top-actions"><button class="top-rj" id="topRj" type="button">ASK ASSISTANT</button><button class="icon-btn" id="installBtn" aria-label="Install Sheetal Assistant" hidden>＋</button><button class="icon-btn" id="muteBtn" aria-label="Mute or unmute"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4m12 0 4 4m0-4-4 4"/></svg></button></div></header>
 <section class="view active" data-view="home"><div class="eyebrow">PERSONAL SPACE</div><h1>Made for your moments.</h1><p class="sub">Tell your assistant what you need. Music is just one thing it can take care of.</p><article class="live-card"><div class="live-row"><span class="onair"><i></i><span id="airText">READY</span></span><span class="freq">SHEETAL · ASSISTANT</span></div><div class="record-wrap"><div class="record paused" id="recordHome"></div></div><h2 id="homeTitle">Ready when you are</h2><p class="song" id="homeArtist">Ask for music, planning, reminders, or help</p></article><div class="section-head"><h2>Now playing</h2></div><div class="now-card"><div class="cover" id="homeCover">♪</div><div class="track"><small>SPOTIFY</small><strong id="nowTitle">Connect Spotify to let the assistant play</strong><span id="nowArtist">Music will be controlled here</span></div><button class="mini-play" id="homePlay" aria-label="Play or pause"><svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button></div><div class="music-connection"><button class="voice-toggle" id="spotifyConnect" type="button">CONNECT SPOTIFY</button><small id="spotifyStatus">Connect Sheetal’s Spotify account once on this phone. The assistant will control music for her.</small></div><div class="device-handoff" id="deviceHandoff" hidden><div><strong>Playing on</strong><span id="deviceStatus">This device</span></div><button id="refreshDevices" type="button">REFRESH</button><select id="devicePicker" aria-label="Choose where music plays"><option value="">Choose a Spotify device…</option></select><small>Only one Spotify device can play at a time. On iPhone, tap Play after transferring.</small></div><div class="section-head"><h2>Quick actions</h2></div><div class="quick-grid"><button class="quick" data-assistant-focus="voice"><span>◉</span><strong>Talk to assistant</strong><small>Start a voice conversation</small></button><button class="quick" data-assistant-focus="text"><span>⌕</span><strong>Tell it what you need</strong><small>Type a request or music instruction</small></button></div></section>

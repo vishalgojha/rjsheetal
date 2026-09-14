@@ -1,0 +1,29 @@
+/* Rebuild pass: intentional dashboard composition, not a cosmetic override. */
+:root{--ink:#152033;--muted:#66758c;--navy:#172640;--orange:#ff684d;--violet:#6b5ce7;--surface:#fff;--soft:#f4f6fb;--line:#e5e9f1;--shadow:0 12px 32px rgba(29,45,75,.08)}
+body{background:#eef2f8!important;color:var(--ink)!important}
+.app{width:min(100% - 48px,1480px)!important;margin:24px auto!important;padding:30px 48px 50px!important;background:#f8faff!important;border:1px solid #fff!important;border-radius:28px!important;box-shadow:0 24px 80px rgba(28,43,74,.12)!important}
+.topbar{margin-bottom:28px!important}
+.view[data-view=home]{display:grid!important;grid-template-columns:minmax(0,1.16fr) minmax(390px,.84fr)!important;grid-template-areas:'eyebrow eyebrow' 'title title' 'sub sub' 'live email' 'quick nowhead' 'quick now' 'quick connect' 'quick device'!important;gap:0 28px!important;align-items:start!important}
+.view[data-view=home]>.eyebrow{grid-area:eyebrow!important}
+.view[data-view=home]>h1{grid-area:title!important;margin-top:4px!important}
+.view[data-view=home]>.sub{grid-area:sub!important;margin-bottom:14px!important}
+.view[data-view=home]>.live-card{grid-area:live!important;margin-top:8px!important;min-height:250px!important;padding:28px!important;align-self:start!important}
+.view[data-view=home]>#emailPanel{grid-area:email!important;margin-top:8px!important;align-self:start!important}
+.view[data-view=home]>.section-head:has(+.now-card){grid-area:nowhead!important;margin:24px 0 10px!important}
+.view[data-view=home]>.now-card{grid-area:now!important;align-self:start!important}
+.view[data-view=home]>.music-connection{grid-area:connect!important;align-self:start!important;margin-top:10px!important}
+.view[data-view=home]>.device-handoff{grid-area:device!important;align-self:start!important;margin-top:10px!important}
+.view[data-view=home]>.section-head:has(+.quick-grid){grid-area:quickhead!important;margin:24px 0 10px!important}
+.view[data-view=home]>.quick-grid{grid-area:quick!important;align-self:start!important}
+.view[data-view=home]>.section-head:has(+.quick-grid):before{content:'SHORTCUTS';display:block;color:var(--violet);font-size:9px;letter-spacing:1.5px;margin-bottom:5px}
+.live-card{overflow:hidden!important;border-radius:22px!important;background:linear-gradient(135deg,#182842,#294a73)!important}
+.live-card h2{font-size:28px!important;margin-top:34px!important}
+.email-panel{padding:22px!important;border-radius:22px!important}
+.now-card{padding:13px!important}
+.quick-grid{gap:12px!important}
+.quick{min-height:116px!important;padding:17px!important;background:#fff!important;border:1px solid var(--line)!important;box-shadow:var(--shadow)!important}
+.life-panel{width:100%!important;margin:30px 0 0!important;padding:24px!important;border-radius:22px!important;background:#fff!important;box-shadow:var(--shadow)!important}
+.life-box{background:#fbfcff!important}
+@media(max-width:979px){.app{width:100%!important;margin:0!important;border-radius:0!important;padding:22px 18px 112px!important}.view[data-view=home]{display:block!important}.view[data-view=home]>.live-card,.view[data-view=home]>#emailPanel{margin-top:18px!important}.view[data-view=home]>.section-head{margin-top:24px!important}.quick-grid{grid-template-columns:1fr 1fr!important}.life-panel{margin-top:28px!important}}
+@media(max-width:520px){.top-rj{font-size:0!important;width:42px!important;padding:0!important}.top-rj:after{content:'◉';font-size:15px}.quick{min-height:104px!important}.quick small{font-size:10px!important}.live-card h2{font-size:24px!important}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

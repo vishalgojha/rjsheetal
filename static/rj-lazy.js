@@ -232,7 +232,12 @@
         // agent not to generate audio for this session.
         ...(kind === 'text' ? {
           textOnly: true,
-          overrides: { conversation: { textOnly: true } },
+          overrides: {
+            conversation: { textOnly: true },
+            // Text chat should wait for Sheetal's request instead of adding
+            // another automatic greeting on top of the typed response.
+            agent: { firstMessage: '' },
+          },
         } : {}),
         dynamicVariables: assistantContext,
         clientTools: {
@@ -307,6 +312,11 @@
         },
         onAgentChatResponsePart(part) {
           if (sessionKind !== 'text') return;
+          const partType = part?.type || part?.event || '';
+          if (partType === 'stop' || partType === 'end') {
+            setChatStatus('Assistant replied.');
+            return;
+          }
           const text = typeof part === 'string'
             ? part
             : (part?.text || part?.delta || part?.message || part?.agentChatResponsePart?.text || '');

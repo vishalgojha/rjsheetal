@@ -1,6 +1,6 @@
 # Sheetal Personal Assistant
 
-Sheetal’s private assistant at **https://rj.vishalojha.me**. The assistant is
+Sheetal’s private assistant at **https://sd.vishalojha.me**. The assistant is
 the primary experience: it can remember useful preferences, keep tasks and
 notes, manage a shopping list, make a day plan, answer questions, and control
 Spotify when Sheetal asks. Spotify is an optional control layer, not the
@@ -27,7 +27,7 @@ Create a public-repository application from this repository and set:
 Add a persistent Coolify volume mounted at `/data`. This stores Sheetal’s
 tasks, notes, shopping list, plans, preferences, music state, and request
 history across redeployments. Add the exact Spotify redirect URI
-`https://rj.vishalojha.me/` in the Spotify developer dashboard.
+`https://sd.vishalojha.me/` in the Spotify developer dashboard.
 
 ## Phone setup
 

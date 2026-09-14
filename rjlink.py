@@ -5,7 +5,7 @@ Shared by dj/uplink.py (audio relay + metadata) and dj/autodj.py
 
 Configuration (env vars, or a local rjlink_creds.py in the same dir):
 
-    RJSHEETAL_URL    e.g. https://rj.vishalojha.me   (no trailing slash)
+    RJSHEETAL_URL    e.g. https://sd.vishalojha.me   (no trailing slash)
     RJSHEETAL_TOKEN  the shared X-RJ-Token set on the VPS
 
 Relay-only processes (uplink) need the token; autodj also uses it for

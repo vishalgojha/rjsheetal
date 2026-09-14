@@ -7,7 +7,7 @@ forwarding is needed on the home router — the VPS re-broadcasts the
 stream to internet listeners.
 
 Usage:
-    RJSHEETAL_URL=https://rj.vishalojha.me \
+    RJSHEETAL_URL=https://sd.vishalojha.me \
     RJSHEETAL_TOKEN=... \
     python3 uplink.py
 

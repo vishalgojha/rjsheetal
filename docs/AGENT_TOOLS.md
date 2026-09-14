@@ -51,7 +51,7 @@ KIM_REMOTE_PIN=<same PIN as the Kim bridge>
 Create a webhook tool with:
 
 - Method: `POST`
-- URL: `https://rj.vishalojha.me/api/agent/action`
+- URL: `https://sd.vishalojha.me/api/agent/action`
 - Header: `X-RJ-Agent-Token` as a secret containing the same value as
   `RJSHEETAL_AGENT_TOKEN` in Coolify
 - Response timeout: 20 seconds

@@ -1,5 +1,5 @@
-const CACHE = 'rjsheetal-shell-v7';
-const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/app.js', '/rj-lazy.js', '/spotify-personal.js'];
+const CACHE = 'rjsheetal-shell-v8';
+const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/app.js', '/redesign.css', '/rj-lazy.js', '/spotify-personal.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));

@@ -4,8 +4,8 @@
   "description": "Sheetal’s personal Hindi/Hinglish assistant with private Spotify music.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#211d19",
-  "theme_color": "#211d19",
+  "background_color": "#f6f7fb",
+  "theme_color": "#162239",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

@@ -1157,6 +1157,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("rebuild.css", "text/css; charset=utf-8")
         elif path == "/persona.css":
             self._serve_file("persona.css", "text/css; charset=utf-8")
+        elif path == "/final.css":
+            self._serve_file("final.css", "text/css; charset=utf-8")
         elif path == "/rj-lazy.js":
             self._serve_file("rj-lazy.js", "application/javascript; charset=utf-8")
         elif path == "/spotify-personal.js":

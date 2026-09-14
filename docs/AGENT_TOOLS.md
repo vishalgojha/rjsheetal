@@ -3,8 +3,8 @@
 The app has two different tool paths:
 
 1. `open_external_app` is an ElevenLabs **client tool**. It runs in the PWA
-   on Sheetal's phone and creates a visible, user-tapped handoff to Spotify,
-   WhatsApp, the phone dialer, or Maps.
+   and routes the requested action through the authenticated laptop bridge;
+   it falls back to a visible phone handoff if the bridge is unavailable.
 2. `assistant_action` is an ElevenLabs **webhook tool**. It calls the protected
    app endpoint for verified assistant data and actions.
 
@@ -15,24 +15,36 @@ PWA already registers the handler with `Conversation.startSession`.
 
 Description:
 
-> Prepare an action on Sheetal’s phone. Use this when Sheetal asks to open a
-> browser tab, open Spotify, open WhatsApp, call a phone number, or open a place
-> in Maps.
-> This tool only prepares a visible button on Sheetal's phone. Never claim the
-> app opened, a call started, or a message was sent until Sheetal taps and
-> confirms it.
+> Open the requested app/site through the laptop bridge. Use this when Sheetal asks to open a
+> browser tab, open Spotify or YouTube Music, search for a song, open WhatsApp,
+> call a phone number, or open a place in Maps.
+> Never claim a login, call, message send, payment, or final playback succeeded
+> unless the bridge result confirms it.
 
 Parameters:
 
 | Name | Type | Required | Description |
 |---|---|---:|---|
-| `app` | string | yes | `browser`, `spotify`, `whatsapp`, `phone`, or `maps` |
-| `target` | string | no | Spotify song/artist/playlist, Maps place, or an app URL |
-| `text` | string | no | WhatsApp message draft or search text |
+| `app` | string | yes | `browser`, `spotify`, `youtube_music`, `youtube`, `whatsapp`, `phone`, or `maps` |
+| `target` | string | no | Song/artist/playlist, Maps place, or an app URL |
+| `text` | string | no | Search text or WhatsApp message draft |
 | `phone` | string | no | Phone number including country code when needed |
 
-For WhatsApp, the tool prepares a draft only. Sheetal must review and press
-Send herself.
+For Spotify, the bridge opens the desktop app and types the requested search
+text; the assistant can submit it with `press_key`/`ui_click`. For YouTube Music
+and YouTube, the bridge opens a direct web search URL, which works even without
+a connected Spotify account. WhatsApp remains draft-only; Sheetal must review
+and press Send herself.
+
+## Bridge runtime variables
+
+The deployed app needs these server-side variables. Never put the bridge PIN in
+the frontend bundle:
+
+```text
+KIM_REMOTE_URL=https://app.vishalojha.me
+KIM_REMOTE_PIN=<same PIN as the Kim bridge>
+```
 
 ## Webhook tool: `assistant_action`
 

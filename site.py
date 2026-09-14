@@ -70,6 +70,11 @@ NANGO_SECRET_KEY = os.environ.get("NANGO_SECRET_KEY", "").strip()
 NANGO_API_BASE = os.environ.get("NANGO_API_BASE", "https://api.nango.dev").strip().rstrip("/")
 NANGO_INTEGRATION_ID = os.environ.get("NANGO_INTEGRATION_ID", "gmail").strip() or "gmail"
 NANGO_USER_ID = os.environ.get("NANGO_USER_ID", "sheetal").strip() or "sheetal"
+# The local Kim/Aurora bridge is the assistant's laptop action engine. Keep
+# its PIN server-side; the browser only talks to this same-origin proxy.
+KIM_REMOTE_URL = os.environ.get("KIM_REMOTE_URL", "https://app.vishalojha.me").strip().rstrip("/")
+KIM_REMOTE_PIN = os.environ.get("KIM_REMOTE_PIN", "").strip()
+KIM_REMOTE_TIMEOUT_S = float(os.environ.get("KIM_REMOTE_TIMEOUT", "45"))
 # Email is deliberately disabled until the public app has an owner-only gate.
 # Set this to a private passphrase in Coolify; never put it in the frontend.
 RJSHEETAL_PRIVATE_CODE = os.environ.get("RJSHEETAL_PRIVATE_CODE", "").strip()
@@ -648,6 +653,69 @@ def request_cookie(handler, name):
 def email_authorized(handler):
     expected = email_cookie_value()
     return bool(expected and secrets.compare_digest(request_cookie(handler, EMAIL_COOKIE), expected))
+
+
+BRIDGE_TOOL_MAP = {
+    "open_app": "launch_app",
+    "ui_type": "type_text",
+    "type_text": "type_text",
+    "press_key": "press_key",
+    "playwright_run": "playwright_run",
+    "screenshot": "screenshot",
+}
+
+
+def bridge_request(tool_name, parameters):
+    """Run one approved desktop/browser tool on the authenticated laptop bridge."""
+    if not KIM_REMOTE_URL or not KIM_REMOTE_PIN:
+        raise RuntimeError("laptop bridge is not configured")
+    requested = str(tool_name or "").strip().lower()
+    remote_name = BRIDGE_TOOL_MAP.get(requested)
+    params = parameters if isinstance(parameters, dict) else {}
+    if requested == "open_url" or requested == "browser_open":
+        remote_name = "launch_app"
+        params = {"name": str(params.get("url") or params.get("name") or "").strip()}
+    elif requested == "ui_click" or requested == "browser_click":
+        # A focused search result can be submitted/played with Return. This
+        # handles the common “click Play/submit” request without pretending
+        # that a browser page has an accessible DOM from the PWA.
+        remote_name = "press_key"
+        params = {"key": "Return"}
+    elif requested == "open_external_app":
+        app = str(params.get("app") or params.get("app_name") or "browser").strip()
+        target = str(params.get("target") or params.get("text") or "").strip()
+        app_key = app.lower()
+        if app_key == "spotify":
+            opened = bridge_request("open_app", {"app_name": "spotify"})
+            if target:
+                time.sleep(1.5)
+                typed = bridge_request("type_text", {"text": target})
+                return {"ok": True, "tool": requested, "bridge_tool": "launch_app + type_text", "result": f"{opened['result']}; {typed['result']}"}
+            return opened
+        if app_key in {"youtube", "youtube_music", "youtube music", "ytmusic"} and target:
+            if app_key in {"youtube_music", "youtube music", "ytmusic"}:
+                target = "https://music.youtube.com/search?q=" + urllib.parse.quote(target)
+            else:
+                target = "https://www.youtube.com/results?search_query=" + urllib.parse.quote(target)
+            remote_name = "launch_app"
+            params = {"name": target}
+        else:
+            remote_name = "launch_app"
+            params = {"name": target or app}
+    if not remote_name:
+        raise ValueError("unsupported bridge action")
+    body = json.dumps({"name": remote_name, "parameters": params}, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        KIM_REMOTE_URL + "/v1/tool",
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json", "X-Kim-Pin": KIM_REMOTE_PIN},
+    )
+    with urllib.request.urlopen(request, timeout=KIM_REMOTE_TIMEOUT_S) as response:
+        result = json.loads(response.read() or b"{}")
+    if not isinstance(result, dict) or not result.get("ok"):
+        raise RuntimeError(str(result.get("error") or result.get("result") or "bridge action failed"))
+    return {"ok": True, "tool": requested, "bridge_tool": remote_name, "result": result.get("result", "done")}
 
 
 def nango_connection_record():
@@ -1370,6 +1438,20 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps({"ok": True, "message": "Local Gmail session cleared"}), extra={
                 "Set-Cookie": f"{EMAIL_COOKIE}=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax",
             })
+        elif path == "/api/bridge/tool":
+            if not email_authorized(self):
+                self._json(403, {"ok": False, "error": "unlock the personal assistant before controlling the laptop"})
+                return
+            try:
+                tool_name = body.get("name") or body.get("tool")
+                result = bridge_request(tool_name, body.get("parameters", body))
+                self._json(200, result)
+            except urllib.error.HTTPError as exc:
+                log(f"bridge tool error: HTTP {exc.code}")
+                self._json(502, {"ok": False, "error": "laptop bridge rejected the action"})
+            except Exception as exc:
+                log(f"bridge tool error: {exc!r}")
+                self._json(502, {"ok": False, "error": "laptop bridge is temporarily unavailable"})
         elif path == "/api/memory/event":
             event = body if isinstance(body, dict) else {}
             if event.get("type") not in ("play", "skip", "replay", "request", "conversation", "mood", "preference", "taste"):

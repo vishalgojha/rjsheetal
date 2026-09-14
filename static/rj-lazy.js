@@ -23,9 +23,31 @@
   let loading = false;
   let wake = true;
 
-  // Client tools run inside Sheetal's phone/browser. The agent itself runs on
-  // ElevenLabs' infrastructure, so it cannot click an installed app directly.
-  // We prepare a safe, user-tapped handoff instead.
+  // Client tools are executed by the same-origin bridge proxy. The agent runs
+  // on ElevenLabs, while the authenticated bridge performs the laptop action.
+  async function bridgeTool(name, parameters) {
+    const response = await fetch('/api/bridge/tool', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, parameters: parameters || {} }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw Error(data.error || 'laptop bridge action failed');
+    return data.result || 'done';
+  }
+  function searchAction(label, query, webUrl, appUrl) {
+    const cleanQuery = String(query || '').trim();
+    return {
+      url: webUrl,
+      appUrl: appUrl || '',
+      label,
+      fallbackLabel: 'OPEN WEB SEARCH',
+      query: cleanQuery,
+      newTab: true,
+    };
+  }
+
   function appTarget(app, target, text, phone) {
     const name = String(app || '').trim().toLowerCase();
     const value = String(target || '').trim();
@@ -35,11 +57,21 @@
       return { url: value, label: 'Open in browser', newTab: true };
     }
     if (name === 'spotify') {
-      if (/^https:\/\/open\.spotify\.com\//i.test(value)) return { url: value, label: 'Open Spotify' };
-      if (/^spotify:/i.test(value)) return { url: value, label: 'Open Spotify' };
+      if (/^https:\/\/open\.spotify\.com\//i.test(value)) return { url: value, label: 'OPEN SPOTIFY', newTab: true };
+      if (/^spotify:/i.test(value)) return { url: value, label: 'OPEN SPOTIFY' };
       const query = value || message;
-      if (!query) return null;
-      return { url: 'https://open.spotify.com/search/' + encodeURIComponent(query), label: 'Open Spotify' };
+      if (!query) return searchAction('OPEN SPOTIFY', '', 'https://open.spotify.com/', 'spotify:');
+      return searchAction('OPEN SPOTIFY', query, 'https://open.spotify.com/search/' + encodeURIComponent(query), 'spotify:search:' + encodeURIComponent(query));
+    }
+    if (name === 'youtube_music' || name === 'youtube music' || name === 'ytmusic' || name === 'music.youtube.com') {
+      const query = value || message;
+      if (!query) return searchAction('OPEN YOUTUBE MUSIC', '', 'https://music.youtube.com/', 'youtubemusic://');
+      return searchAction('OPEN YOUTUBE MUSIC', query, 'https://music.youtube.com/search?q=' + encodeURIComponent(query), 'youtubemusic://search?q=' + encodeURIComponent(query));
+    }
+    if (name === 'youtube' || name === 'youtube.com') {
+      const query = value || message;
+      if (!query) return searchAction('OPEN YOUTUBE', '', 'https://www.youtube.com/', '');
+      return searchAction('OPEN YOUTUBE', query, 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query), '');
     }
     if (name === 'whatsapp') {
       const digits = String(phone || '').replace(/[^0-9]/g, '');
@@ -69,6 +101,12 @@
         console.info('Direct Spotify playback unavailable; preparing handoff.', error);
       }
     }
+    try {
+      const result = await bridgeTool('open_external_app', parameters);
+      return `Done — I opened ${parameters?.app || 'the requested app'} on the laptop. ${result}`;
+    } catch (error) {
+      console.info('Laptop bridge unavailable; preparing phone handoff.', error);
+    }
     const action = appTarget(parameters?.app, parameters?.target, parameters?.text, parameters?.phone);
     if (!action) return 'I could not prepare that app action. I need an app name and a valid target.';
     const panel = document.getElementById('assistantActions');
@@ -76,20 +114,34 @@
     const title = document.getElementById('assistantActionTitle');
     const detail = document.getElementById('assistantActionDetail');
     const button = document.getElementById('assistantActionButton');
+    const fallback = document.getElementById('assistantActionFallback');
     const dismiss = document.getElementById('assistantActionDismiss');
     if (title) title.textContent = action.label;
-    if (detail) detail.textContent = parameters?.text ? 'Prepared on this phone. Review it before sending.' : 'Prepared on this phone. Tap to continue.';
+    if (detail) {
+      detail.textContent = action.query
+        ? `Search prepared for “${action.query}”. Tap to open the app; if it is unavailable, use web search.`
+        : 'Prepared on this phone. Tap to continue.';
+    }
     if (button) {
       button.textContent = action.label;
       button.onclick = () => {
-        if (action.newTab) {
-          const tab = window.open(action.url, '_blank', 'noopener,noreferrer');
-          if (!tab) window.location.href = action.url;
+        const url = action.appUrl || action.url;
+        if (action.newTab && !action.appUrl) {
+          const tab = window.open(url, '_blank', 'noopener,noreferrer');
+          if (!tab) window.location.href = url;
           return;
         }
-        // A normal top-level navigation lets Android/iOS hand off https and
-        // custom app schemes to the installed app when the OS allows it.
-        window.location.href = action.url;
+        // A top-level navigation lets Android/iOS hand off supported app
+        // schemes. A separate web button below is the reliable fallback.
+        window.location.href = url;
+      };
+    }
+    if (fallback) {
+      fallback.hidden = !action.fallbackLabel || !action.url || !action.appUrl;
+      fallback.textContent = action.fallbackLabel || 'OPEN WEB SEARCH';
+      fallback.onclick = () => {
+        const tab = window.open(action.url, '_blank', 'noopener,noreferrer');
+        if (!tab) window.location.href = action.url;
       };
     }
     if (dismiss) dismiss.onclick = () => { panel.hidden = true; };
@@ -140,6 +192,15 @@
         connectionType: kind === 'voice' ? 'webrtc' : 'websocket',
         clientTools: {
           open_external_app: prepareAppAction,
+          open_app: (parameters) => bridgeTool('open_app', parameters),
+          ui_type: (parameters) => bridgeTool('ui_type', parameters),
+          ui_click: (parameters) => bridgeTool('ui_click', parameters),
+          type_text: (parameters) => bridgeTool('type_text', parameters),
+          press_key: (parameters) => bridgeTool('press_key', parameters),
+          browser_open: (parameters) => bridgeTool('browser_open', parameters),
+          browser_click: (parameters) => bridgeTool('browser_click', parameters),
+          open_url: (parameters) => bridgeTool('open_url', parameters),
+          playwright_run: (parameters) => bridgeTool('playwright_run', parameters),
         },
         onConnect() {
           voiceButton.disabled = false;

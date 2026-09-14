@@ -12,6 +12,7 @@
   const chatButton = document.getElementById('assistantSend');
   const chatStatus = document.getElementById('assistantStatus');
   const chatReply = document.getElementById('assistantReply');
+  const textToggle = document.getElementById('textToggle');
   if (!voiceButton || !topButton) return;
 
   const AGENT_ID = 'agent_8401m2cyznemf10tav3hh90nqya1';
@@ -160,6 +161,17 @@
     if (chatStatus) chatStatus.textContent = text;
   }
 
+  function focusTextAssistant(prompt = '') {
+    if (!chatInput) return;
+    if (prompt) chatInput.value = prompt;
+    chatInput.focus({ preventScroll: false });
+    chatInput.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    setChatStatus('Text mode · no microphone and no spoken reply.');
+  }
+
+  window.sheetalAssistantPrompt = focusTextAssistant;
+  document.addEventListener('sheetal:assistant-prompt', event => focusTextAssistant(String(event.detail?.prompt || '')));
+
   async function loadClient() {
     return import('https://esm.sh/@elevenlabs/client');
   }
@@ -215,6 +227,13 @@
       session = await Conversation.startSession({
         agentId: AGENT_ID,
         connectionType: kind === 'voice' ? 'webrtc' : 'websocket',
+        // Keep typed requests genuinely silent. The SDK uses this flag to
+        // create its lighter TextConversation and the override tells the
+        // agent not to generate audio for this session.
+        ...(kind === 'text' ? {
+          textOnly: true,
+          overrides: { conversation: { textOnly: true } },
+        } : {}),
         dynamicVariables: assistantContext,
         clientTools: {
           open_external_app: prepareAppAction,
@@ -230,12 +249,12 @@
         },
         onConnect() {
           voiceButton.disabled = false;
-          voiceButton.textContent = 'VOICE ON';
-          voiceButton.classList.add('on');
+          voiceButton.textContent = kind === 'voice' ? 'VOICE ON' : 'VOICE OFF';
+          voiceButton.classList.toggle('on', kind === 'voice');
           topButton.textContent = 'STOP';
           topButton.classList.add('on');
           state(kind === 'voice' ? 'Voice ready' : 'Chat ready', kind === 'voice' ? 'You can speak now. Music is paused.' : 'Type another request whenever you need help.', 'listening');
-          setChatStatus(kind === 'voice' ? (wake ? 'Listening · say “Hey Radio” or speak.' : 'Listening · direct talk mode.') : 'Connected · your message will be answered here.');
+          setChatStatus(kind === 'voice' ? (wake ? 'Listening · say “Hey Radio” or speak.' : 'Listening · direct talk mode.') : 'Text mode · no microphone and no spoken reply.');
         },
         onStatusChange({ status: nextStatus }) {
           if (nextStatus === 'connecting') state('Connecting', 'Almost there…', '');
@@ -285,6 +304,16 @@
             if (chatReply) chatReply.textContent = text;
             setChatStatus('Assistant replied.');
           }
+        },
+        onAgentChatResponsePart(part) {
+          if (sessionKind !== 'text') return;
+          const text = typeof part === 'string'
+            ? part
+            : (part?.text || part?.delta || part?.message || part?.agentChatResponsePart?.text || '');
+          if (!text) return;
+          if (part?.type === 'start' && chatReply) chatReply.textContent = '';
+          if (chatReply) chatReply.textContent += text;
+          setChatStatus('Assistant is replying in text…');
         },
         onModeChange({ mode }) {
           const speaking = mode === 'speaking';
@@ -349,6 +378,10 @@
   voiceButton.textContent = 'TALK TO ASSISTANT';
   voiceButton.addEventListener('click', () => session ? stop() : start('voice'));
   topButton.addEventListener('click', () => session ? stop() : start('voice'));
+  textToggle?.addEventListener('click', () => {
+    if (sessionKind === 'voice') stop();
+    focusTextAssistant();
+  });
   chat?.addEventListener('submit', sendTypedMessage);
   chatInput?.addEventListener('input', () => session?.sendUserActivity?.());
   wakeButton?.addEventListener('click', () => {

@@ -10,10 +10,10 @@
   panel.innerHTML = `
     <div class="life-head"><div><div class="eyebrow">HOME BASE</div><h2>Keep the important things moving</h2></div><button id="lifeRefresh" type="button">REFRESH</button></div>
     <div class="life-grid">
-      <div class="life-box"><strong>Work + home focus</strong><div id="lifeTasks" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeTaskForm" class="life-form"><input id="lifeTaskInput" placeholder="Add a task…" aria-label="New task"><button type="submit">ADD</button></form></div>
-      <div class="life-box"><strong>Home list</strong><div id="lifeShopping" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeShopForm" class="life-form"><input id="lifeShopInput" placeholder="Add to list…" aria-label="Shopping item"><button type="submit">ADD</button></form></div>
+      <div class="life-box"><strong>Work + home focus</strong><div id="lifeTasks" class="life-list"><span class="life-muted">Loading…</span></div><button class="life-chat" type="button" data-life-prompt="Add a task: ">ADD THROUGH CHAT</button></div>
+      <div class="life-box"><strong>Home list</strong><div id="lifeShopping" class="life-list"><span class="life-muted">Loading…</span></div><button class="life-chat" type="button" data-life-prompt="Add to my home shopping list: ">ADD THROUGH CHAT</button></div>
     </div>
-    <div class="life-box life-notes"><div class="life-box-head"><strong>Notes</strong><button id="lifePlan" type="button">PLAN TODAY</button></div><div id="lifeNotes" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeNoteForm" class="life-note-form"><input id="lifeNoteTitle" placeholder="Note title…" aria-label="Note title"><textarea id="lifeNoteBody" rows="2" placeholder="Write something to remember…" aria-label="Note body"></textarea><button type="submit">SAVE NOTE</button></form></div>
+    <div class="life-box life-notes"><div class="life-box-head"><strong>Notes</strong><button class="life-chat" id="lifePlan" type="button" data-life-prompt="Plan my day from my open tasks">ASK SHEETAL TO PLAN</button></div><div id="lifeNotes" class="life-list"><span class="life-muted">Loading…</span></div><button class="life-chat life-chat-wide" type="button" data-life-prompt="Remember this: ">SAVE A NOTE THROUGH CHAT</button></div>
     <div id="lifeMemory" class="life-memory"></div>
     <p id="lifeMessage" class="life-message" aria-live="polite"></p>`;
   home.after(panel);
@@ -47,9 +47,9 @@
   }
   async function load() { try { render(await request('/api/assistant/dashboard')); message(''); } catch (e) { message('Your saved items are temporarily unavailable.'); } }
   $('lifeRefresh').addEventListener('click', load);
-  $('lifeTaskForm').addEventListener('submit', async event => { event.preventDefault(); const input = $('lifeTaskInput'); if (!input.value.trim()) return; try { await request('/api/tasks', { method: 'POST', body: JSON.stringify({ title: input.value }) }); input.value = ''; await load(); } catch (e) { message(e.message); } });
-  $('lifeShopForm').addEventListener('submit', async event => { event.preventDefault(); const input = $('lifeShopInput'); if (!input.value.trim()) return; try { await request('/api/shopping', { method: 'POST', body: JSON.stringify({ item: input.value }) }); input.value = ''; await load(); } catch (e) { message(e.message); } });
-  $('lifeNoteForm').addEventListener('submit', async event => { event.preventDefault(); const title = $('lifeNoteTitle'), body = $('lifeNoteBody'); if (!body.value.trim()) return; try { await request('/api/notes', { method: 'POST', body: JSON.stringify({ title: title.value, body: body.value }) }); title.value = ''; body.value = ''; await load(); } catch (e) { message(e.message); } });
-  $('lifePlan').addEventListener('click', async () => { try { const data = await request('/api/assistant/dashboard'); const items = (data.tasks || []).slice(0, 8).map(x => x.title); await request('/api/plans', { method: 'POST', body: JSON.stringify({ date: new Date().toISOString().slice(0, 10), items, summary: items.length ? 'Built from open tasks.' : 'A gentle day with room to breathe.' }) }); message(items.length ? 'Today’s plan is saved.' : 'Today is saved as a blank plan.'); } catch (e) { message(e.message); } });
+  panel.querySelectorAll('[data-life-prompt]').forEach(button => button.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('sheetal:assistant-prompt', { detail: { prompt: button.dataset.lifePrompt || '' } }));
+    message('Ready in the assistant composer. Add the details, then send.');
+  }));
   load();
 })();

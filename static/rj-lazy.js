@@ -103,7 +103,7 @@
     }
     try {
       const result = await bridgeTool('open_external_app', parameters);
-      return `Done — I opened ${parameters?.app || 'the requested app'} on the laptop. ${result}`;
+      return `Sent to the laptop bridge — ${parameters?.app || 'the requested app'} is being opened there. ${result}`;
     } catch (error) {
       console.info('Laptop bridge unavailable; preparing phone handoff.', error);
     }
@@ -164,6 +164,30 @@
     return import('https://esm.sh/@elevenlabs/client');
   }
 
+  async function loadAssistantContext() {
+    const fallback = {
+      assistant_context: 'No earlier conversation context is available. Start naturally and ask what Sheetal needs.',
+      opening_line: 'I’m here. What would help?',
+    };
+    try {
+      const response = await fetch('/api/agent/memory', { cache: 'no-store' });
+      if (!response.ok) return fallback;
+      const memory = await response.json();
+      const turns = Array.isArray(memory?.recent_conversations) ? memory.recent_conversations : [];
+      const useful = turns
+        .filter(item => item && String(item.text || '').trim())
+        .slice(-8)
+        .map(item => `${item.source === 'user' ? 'Sheetal' : 'Assistant'}: ${String(item.text).trim().slice(0, 280)}`);
+      if (!useful.length) return fallback;
+      return {
+        assistant_context: useful.join('\n'),
+        opening_line: 'I’m here with you. We can continue from last time, or start with something new.',
+      };
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   async function start(kind) {
     if (loading || session) return session;
     loading = true;
@@ -177,6 +201,7 @@
     try {
       document.dispatchEvent(new CustomEvent('sheetal:rj-pause'));
       const { Conversation } = await loadClient();
+      const assistantContext = await loadAssistantContext();
 
       if (kind === 'voice') {
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -190,6 +215,7 @@
       session = await Conversation.startSession({
         agentId: AGENT_ID,
         connectionType: kind === 'voice' ? 'webrtc' : 'websocket',
+        dynamicVariables: assistantContext,
         clientTools: {
           open_external_app: prepareAppAction,
           open_app: (parameters) => bridgeTool('open_app', parameters),

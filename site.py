@@ -666,21 +666,23 @@ BRIDGE_TOOL_MAP = {
 
 
 def bridge_request(tool_name, parameters):
-    """Run one approved desktop/browser tool on the authenticated laptop bridge."""
+    """Queue one desktop/browser action for the authenticated laptop bridge."""
     if not KIM_REMOTE_URL or not KIM_REMOTE_PIN:
         raise RuntimeError("laptop bridge is not configured")
     requested = str(tool_name or "").strip().lower()
-    remote_name = BRIDGE_TOOL_MAP.get(requested)
     params = parameters if isinstance(parameters, dict) else {}
-    if requested == "open_url" or requested == "browser_open":
-        remote_name = "launch_app"
-        params = {"name": str(params.get("url") or params.get("name") or "").strip()}
-    elif requested == "ui_click" or requested == "browser_click":
+    action = requested
+    if requested in {"open_url", "browser_open"}:
+        action = "open_url"
+        params = {"url": str(params.get("url") or params.get("name") or "").strip()}
+    elif requested in {"ui_click", "browser_click"}:
         # A focused search result can be submitted/played with Return. This
         # handles the common “click Play/submit” request without pretending
         # that a browser page has an accessible DOM from the PWA.
-        remote_name = "press_key"
+        action = "press_key"
         params = {"key": "Return"}
+    elif requested in {"open_app", "ui_type", "type_text", "press_key", "screenshot", "playwright_run"}:
+        action = {"ui_type": "type_text"}.get(requested, requested)
     elif requested == "open_external_app":
         app = str(params.get("app") or params.get("app_name") or "browser").strip()
         target = str(params.get("target") or params.get("text") or "").strip()
@@ -688,25 +690,30 @@ def bridge_request(tool_name, parameters):
         if app_key == "spotify":
             opened = bridge_request("open_app", {"app_name": "spotify"})
             if target:
-                time.sleep(1.5)
                 typed = bridge_request("type_text", {"text": target})
-                return {"ok": True, "tool": requested, "bridge_tool": "launch_app + type_text", "result": f"{opened['result']}; {typed['result']}"}
+                return {"ok": True, "tool": requested, "bridge_tool": "open_app + type_text", "result": f"{opened['result']}; {typed['result']}"}
             return opened
         if app_key in {"youtube", "youtube_music", "youtube music", "ytmusic"} and target:
             if app_key in {"youtube_music", "youtube music", "ytmusic"}:
                 target = "https://music.youtube.com/search?q=" + urllib.parse.quote(target)
             else:
                 target = "https://www.youtube.com/results?search_query=" + urllib.parse.quote(target)
-            remote_name = "launch_app"
-            params = {"name": target}
+            return bridge_request("open_url", {"url": target})
         else:
-            remote_name = "launch_app"
-            params = {"name": target or app}
-    if not remote_name:
+            opened = bridge_request("open_app", {"app_name": app})
+            if target:
+                typed = bridge_request("type_text", {"text": target})
+                return {"ok": True, "tool": requested, "bridge_tool": "open_app + type_text", "result": f"{opened['result']}; {typed['result']}"}
+            return opened
+    if action not in {"open_url", "open_app", "type_text", "press_key", "screenshot", "playwright_run"}:
         raise ValueError("unsupported bridge action")
-    body = json.dumps({"name": remote_name, "parameters": params}, ensure_ascii=False).encode("utf-8")
+    if action == "open_app":
+        params = {
+            "name": str(params.get("name") or params.get("app_name") or params.get("app") or params.get("package") or "").strip(),
+        }
+    body = json.dumps({"device_id": "laptop", "action": action, "parameters": params}, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
-        KIM_REMOTE_URL + "/v1/tool",
+        KIM_REMOTE_URL + "/v1/device/command",
         data=body,
         method="POST",
         headers={"Content-Type": "application/json", "Accept": "application/json", "X-Kim-Pin": KIM_REMOTE_PIN},
@@ -715,7 +722,14 @@ def bridge_request(tool_name, parameters):
         result = json.loads(response.read() or b"{}")
     if not isinstance(result, dict) or not result.get("ok"):
         raise RuntimeError(str(result.get("error") or result.get("result") or "bridge action failed"))
-    return {"ok": True, "tool": requested, "bridge_tool": remote_name, "result": result.get("result", "done")}
+    command_id = result.get("command_id", "")
+    return {
+        "ok": True,
+        "tool": requested,
+        "bridge_tool": action,
+        "command_id": command_id,
+        "result": f"Queued on the laptop bridge ({command_id})",
+    }
 
 
 def nango_connection_record():

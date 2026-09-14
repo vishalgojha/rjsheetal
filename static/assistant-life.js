@@ -8,10 +8,10 @@
   panel.className = 'life-panel';
   panel.setAttribute('aria-label', 'Sheetal personal assistant memory');
   panel.innerHTML = `
-    <div class="life-head"><div><div class="eyebrow">YOUR DAY</div><h2>Things to remember</h2></div><button id="lifeRefresh" type="button">REFRESH</button></div>
+    <div class="life-head"><div><div class="eyebrow">HOME BASE</div><h2>Keep the important things moving</h2></div><button id="lifeRefresh" type="button">REFRESH</button></div>
     <div class="life-grid">
-      <div class="life-box"><strong>Tasks</strong><div id="lifeTasks" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeTaskForm" class="life-form"><input id="lifeTaskInput" placeholder="Add a task…" aria-label="New task"><button type="submit">ADD</button></form></div>
-      <div class="life-box"><strong>Shopping</strong><div id="lifeShopping" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeShopForm" class="life-form"><input id="lifeShopInput" placeholder="Add to list…" aria-label="Shopping item"><button type="submit">ADD</button></form></div>
+      <div class="life-box"><strong>Work + home focus</strong><div id="lifeTasks" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeTaskForm" class="life-form"><input id="lifeTaskInput" placeholder="Add a task…" aria-label="New task"><button type="submit">ADD</button></form></div>
+      <div class="life-box"><strong>Home list</strong><div id="lifeShopping" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeShopForm" class="life-form"><input id="lifeShopInput" placeholder="Add to list…" aria-label="Shopping item"><button type="submit">ADD</button></form></div>
     </div>
     <div class="life-box life-notes"><div class="life-box-head"><strong>Notes</strong><button id="lifePlan" type="button">PLAN TODAY</button></div><div id="lifeNotes" class="life-list"><span class="life-muted">Loading…</span></div><form id="lifeNoteForm" class="life-note-form"><input id="lifeNoteTitle" placeholder="Note title…" aria-label="Note title"><textarea id="lifeNoteBody" rows="2" placeholder="Write something to remember…" aria-label="Note body"></textarea><button type="submit">SAVE NOTE</button></form></div>
     <div id="lifeMemory" class="life-memory"></div>

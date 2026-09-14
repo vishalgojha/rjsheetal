@@ -1,0 +1,28 @@
+/* Persona direction: calm family co-pilot for a working mum and her 13-year-old. */
+:root{--mum-ink:#263246;--mum-plum:#7a5c78;--mum-peach:#f5b09b;--mum-cream:#fffaf4;--mum-mint:#dcefe8}
+body{background:linear-gradient(135deg,#f8f6fb,#f2f8f5)!important}
+.app{background:rgba(255,252,248,.92)!important}
+.view[data-view=home]>.eyebrow{color:var(--mum-plum)!important}
+.view[data-view=home]>h1{max-width:760px!important;color:var(--mum-ink)!important}
+.view[data-view=home]>.sub{font-size:15px!important;max-width:600px!important;color:#748094!important}
+.assistant-command{position:relative!important;padding:25px 26px!important;border:1px solid rgba(122,92,120,.2)!important;border-radius:24px!important;background:linear-gradient(120deg,#fffaf4,#f8f2f8)!important;box-shadow:0 18px 42px rgba(122,92,120,.1)!important}
+.assistant-command:after{content:'Your calm co-pilot';position:absolute;right:24px;top:24px;color:var(--mum-plum);font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.assistant-command .eyebrow{color:#ae7a70!important}
+.assistant-command strong{font-size:24px!important;color:var(--mum-ink)!important;letter-spacing:-.7px}
+.assistant-command p{color:#7c8493!important;font-size:12px!important}
+.assistant-form input{background:#fff!important;border-color:#eadfe2!important;min-height:46px!important}
+.assistant-form button{background:var(--mum-plum)!important;min-width:78px!important}
+.assistant-prompts button{border-color:#e3ccd0!important;color:#805b68!important;background:#fff6f2!important}
+.assistant-prompts button:hover,.assistant-prompts button:focus-visible{background:var(--mum-plum)!important;color:#fff!important}
+.live-card{background:linear-gradient(135deg,#27364e,#435a77)!important}
+.live-card h2:after{content:' · one less thing to hold in your head';font-size:12px;font-weight:500;letter-spacing:0;color:rgba(255,255,255,.62)}
+.view[data-view=home]>.section-head:has(+.quick-grid) h2{font-size:0!important}
+.view[data-view=home]>.section-head:has(+.quick-grid) h2:after{content:'What would help right now?';font-size:17px}
+.quick{background:#fffaf4!important;border-color:#efe5df!important}
+.quick span{color:var(--mum-plum)!important;background:#f3e8f0!important}
+.life-panel{background:linear-gradient(120deg,#fffaf4,#f8fbfa)!important;border-color:#eee4df!important}
+.life-head h2:after{content:' — no perfect day required';font-size:12px;color:#a18c8d;font-weight:500}
+.life-box{background:rgba(255,255,255,.72)!important}
+.life-notes{background:#f8f2f8!important}
+@media(min-width:980px){.view[data-view=home]{grid-template-columns:minmax(0,1.08fr) minmax(390px,.92fr)!important;grid-template-areas:'eyebrow eyebrow' 'title title' 'sub sub' 'assistant assistant' 'live email' 'quick nowhead' 'quick now' 'quick connect' 'quick device'!important}.view[data-view=home]>.assistant-command{grid-area:assistant!important;margin:16px 0 0!important}.view[data-view=home]>.live-card,.view[data-view=home]>#emailPanel{margin-top:18px!important}.life-panel{margin-top:34px!important}}
+@media(max-width:699px){.assistant-command{padding:20px!important}.assistant-command:after{position:static;display:block;margin-top:14px}.assistant-command strong{font-size:21px!important}.quick{min-height:112px!important}}

@@ -1151,6 +1151,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("sw.js", "application/javascript; charset=utf-8")
         elif path == "/app.js":
             self._serve_file("app.js", "application/javascript; charset=utf-8")
+        elif path == "/redesign.css":
+            self._serve_file("redesign.css", "text/css; charset=utf-8")
         elif path == "/rj-lazy.js":
             self._serve_file("rj-lazy.js", "application/javascript; charset=utf-8")
         elif path == "/spotify-personal.js":

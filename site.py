@@ -79,6 +79,11 @@ KIM_REMOTE_TIMEOUT_S = float(os.environ.get("KIM_REMOTE_TIMEOUT", "45"))
 # Set this to a private passphrase in Coolify; never put it in the frontend.
 RJSHEETAL_PRIVATE_CODE = os.environ.get("RJSHEETAL_PRIVATE_CODE", "").strip()
 DEFAULT_PRIVATE_CODE = "0000000"
+# The assistant is a trusted personal controller.  Keep the legacy PIN
+# endpoints for old clients, but do not make the owner type a second code in
+# the PWA.  Device/browser access remains the boundary; provider credentials
+# and the laptop bridge secret never leave this server.
+NO_PIN_ACCESS = os.environ.get("RJSHEETAL_NO_PIN", "1").strip().lower() not in {"0", "false", "no", "off"}
 LISTENER_NAME = os.environ.get("RJSHEETAL_LISTENER_NAME", "Sheetal")
 DEFAULT_TRACK_URI = os.environ.get("RJSHEETAL_DEFAULT_TRACK_URI", "").strip()
 SPOTIFY_PLAYLIST_ID = os.environ.get("SPOTIFY_PLAYLIST_ID", "").strip() or "2JXK0KRt8pLkmUqIPPmmQQ"
@@ -615,7 +620,7 @@ class GmailNotConnected(RuntimeError):
 
 
 def email_configured():
-    return bool(NANGO_SECRET_KEY and NANGO_INTEGRATION_ID and current_private_code())
+    return bool(NANGO_SECRET_KEY and NANGO_INTEGRATION_ID)
 
 
 def current_private_code():
@@ -651,6 +656,8 @@ def request_cookie(handler, name):
 
 
 def email_authorized(handler):
+    if NO_PIN_ACCESS:
+        return True
     expected = email_cookie_value()
     return bool(expected and secrets.compare_digest(request_cookie(handler, EMAIL_COOKIE), expected))
 
@@ -1249,6 +1256,10 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("spotify-personal.js", "application/javascript; charset=utf-8")
         elif path == "/assistant-life.js":
             self._serve_file("assistant-life.js", "application/javascript; charset=utf-8")
+        elif path == "/sheetal-shell.js":
+            self._serve_file("sheetal-shell.js", "application/javascript; charset=utf-8")
+        elif path == "/assistant-workspace.js":
+            self._serve_file("assistant-workspace.js", "application/javascript; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":

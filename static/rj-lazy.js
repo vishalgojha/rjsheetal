@@ -299,6 +299,7 @@
           const text = typeof message === 'string' ? message : message?.message;
           const source = message?.source;
           if (!text) return;
+          document.dispatchEvent(new CustomEvent('sheetal:assistant-message', { detail: { text, source } }));
           fetch('/api/memory/event', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'conversation', text, source }), keepalive: true,

@@ -56,6 +56,8 @@
     .workspace-tools button:hover { color:var(--ink); border-color:var(--orange); }
     .workspace-composer { margin-top:auto; padding:10px; border:1px solid var(--line); border-radius:18px; background:rgba(0,0,0,.16); }
     .assistant-form textarea { min-height:78px!important; resize:vertical; line-height:1.4; border:0!important; background:transparent!important; box-shadow:none!important; font-size:15px!important; }
+    .assistant-form textarea { color:#f4f1ea!important; }
+    .assistant-form textarea::placeholder { color:#8c91a0!important; opacity:1; }
     .assistant-form { align-items:flex-end; margin-top:0!important; }
     .assistant-form button { min-height:42px; }
     .composer-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:3px; }
@@ -95,6 +97,7 @@
   command.prepend(intro);
   description?.remove();
   command.querySelector('.assistant-prompts')?.remove();
+  command.querySelector(':scope > .eyebrow')?.remove();
   title.remove();
 
   if (document.body.classList.contains('sheetal-widget')) {

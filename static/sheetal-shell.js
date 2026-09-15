@@ -3,6 +3,10 @@
   const params = new URLSearchParams(location.search);
   const mode = params.get('widget') === '1' ? 'widget' : params.get('controller') === '1' ? 'controller' : '';
   if (mode) document.body.classList.add('sheetal-' + mode);
+  // Desktop root is the agent workspace too. The legacy dashboard remains
+  // available to mobile navigation, but should never compete with the main
+  // command surface on a desktop/widget window.
+  if (!mode && window.matchMedia('(min-width: 700px)').matches) document.body.classList.add('sheetal-widget');
 
   const style = document.createElement('style');
   style.textContent = `

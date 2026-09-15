@@ -1,4 +1,4 @@
-const CACHE = 'rjsheetal-shell-v16';
+const CACHE = 'rjsheetal-shell-v17';
 const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/app.js', '/redesign.css', '/rebuild.css', '/persona.css', '/final.css', '/stability.css', '/rj-lazy.js', '/assistant-life.js', '/spotify-personal.js', '/sheetal-shell.js', '/assistant-workspace.js'];
 
 self.addEventListener('install', event => {

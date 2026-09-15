@@ -1260,6 +1260,8 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file("sheetal-shell.js", "application/javascript; charset=utf-8")
         elif path == "/assistant-workspace.js":
             self._serve_file("assistant-workspace.js", "application/javascript; charset=utf-8")
+        elif path == "/agent-ui.css":
+            self._serve_file("agent-ui.css", "text/css; charset=utf-8")
         elif path == "/apple-touch-icon.png":
             self._serve_file("icon.svg", "image/svg+xml")
         elif path == "/api/stream":
